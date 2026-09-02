@@ -221,6 +221,13 @@ export function Simulator() {
           <input
             value={loadId}
             onChange={(e) => setLoadId(e.target.value)}
+            onFocus={(e) => {
+              e.currentTarget.select();
+              const id = e.currentTarget.value.trim();
+              if (id) void navigator.clipboard.writeText(id).catch(() => undefined);
+            }}
+            spellCheck={false}
+            autoComplete="off"
             placeholder="Replay by id"
             className="w-40 rounded-none border border-[var(--line)] bg-white px-2 py-1 text-[12px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
           />
