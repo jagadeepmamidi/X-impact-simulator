@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.calibration import CALIBRATION_NOTE, calibrate_reactions
+from app.calibration import calibrate_reactions
 from app.config import settings
 from app.groq_client import (
     groq_explain,
@@ -164,7 +164,7 @@ def run_pipeline(
         explanation=explanation,
         weights_note=WEIGHTS_NOTE,
         heads_used=heads_used,
-        heads_note=f"{heads_note} {CALIBRATION_NOTE}",
+        heads_note=heads_note,
         audience_fit=card["audience_fit"],
         niche_index=card["niche_index"],
         negative_signal_risk=card["negative_signal_risk"],

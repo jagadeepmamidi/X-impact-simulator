@@ -391,7 +391,7 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
       </div>
       <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-5">
         <Metric label="p10" value={report.simulation.score_p10.toFixed(0)} note="cascade score, low" />
-        <Metric label="p50" value={report.simulation.score_p50.toFixed(0)} note="median cascade score of shown agents" />
+        <Metric label="p50" value={report.simulation.score_p50.toFixed(0)} note="median cascade" />
         <Metric label="p90" value={report.simulation.score_p90.toFixed(0)} note="cascade score, high" />
         <Metric label="Niche Index" value={`${Math.round(report.niche_index ?? 0)}`} note="core-pack affinity" />
         <Metric label="Audience fit" value={`${Math.round(report.audience_fit ?? 0)}`} note="all-pack affinity" />
@@ -401,7 +401,7 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
         <Metric
           label="Stability"
           value={`${Math.round(report.stability ?? report.confidence ?? 0)}`}
-          note="tighter p10–p90 = more consistent runs, not statistical confidence"
+          note="tighter p10–p90"
         />
         <div className="border-t border-[var(--line)] p-3 sm:border-t-0 sm:border-l">
           <p className="lab-label">Model path</p>

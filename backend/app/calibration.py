@@ -5,10 +5,7 @@ import math
 from app.schemas import PersonaReaction
 from app.sim_config import CALIBRATION_VERSION
 
-CALIBRATION_NOTE = (
-    f"{CALIBRATION_VERSION}: 0-1 heads are affinities mapped onto assumed "
-    "impression-level base rates. Priors are not X telemetry."
-)
+CALIBRATION_NOTE = f"{CALIBRATION_VERSION}: affinities mapped to impression-level priors."
 
 IMPRESSION_PRIORS: dict[str, float] = {
     "like_probability": 0.020,
@@ -69,11 +66,7 @@ def calibrate_reaction(reaction: PersonaReaction) -> PersonaReaction:
         update[field] = round(calibrate_probability(float(getattr(reaction, field)), prior), 6)
     dwell = update["dwell_probability"]
     update["dwell_time"] = round(dwell / max(IMPRESSION_PRIORS["dwell_probability"], 1e-9) * TYPICAL_DWELL_SECONDS, 3)
-    note = " Calibrated to impression priors."
-    reason = (reaction.reason or "").rstrip()
-    if "impression priors" not in reason:
-        reason = reason + note
-    return reaction.model_copy(update={**update, "reason": reason})
+    return reaction.model_copy(update=update)
 
 
 def calibrate_reactions(reactions: list[PersonaReaction]) -> list[PersonaReaction]:
