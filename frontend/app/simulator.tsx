@@ -6,7 +6,7 @@ import { GITHUB_REPO } from "@/lib/repo";
 import { SpreadView } from "./spread";
 import Link from "next/link";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 const SIM_API_KEY = process.env.NEXT_PUBLIC_SIM_API_KEY ?? "";
 
 function apiHeaders(init?: HeadersInit) {
@@ -206,8 +206,8 @@ export function Simulator() {
               <p className="text-[11px] text-[var(--muted)]">{boost} seeds · round-1 initial reach</p>
             </Cell>
             <button
-              type="button"
-              onClick={() => onSubmit()}
+              id="run-sim"
+              type="submit"
               disabled={loading}
               className="flex min-h-[9.5rem] items-center justify-center rounded-none bg-[var(--run)] text-[13px] font-semibold tracking-[0.28em] text-white disabled:cursor-not-allowed disabled:opacity-50 md:min-h-full md:border-l md:border-[var(--line)]"
               style={{ writingMode: "vertical-rl" }}
@@ -215,6 +215,13 @@ export function Simulator() {
               {loading ? "RUNNING..." : textB.trim() ? "COMPARE" : "RUN"}
             </button>
           </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full border-t border-[var(--line)] bg-[var(--run)] py-3 text-[13px] font-semibold tracking-[0.28em] text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? "RUNNING..." : textB.trim() ? "COMPARE HOOKS" : "RUN SIMULATION"}
+          </button>
           {error && (
             <p className="border-t border-[var(--hairline)] px-3 py-2 text-[15px] text-[var(--danger)]">{error}</p>
           )}
