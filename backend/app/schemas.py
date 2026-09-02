@@ -137,6 +137,9 @@ class SimulationSummary(BaseModel):
     reached_round_p50: float
     out_of_network: bool
     graph: SpreadGraph = Field(default_factory=SpreadGraph)
+    exposure_p10: float = 0.0
+    exposure_p50: float = 0.0
+    exposure_p90: float = 0.0
 
 
 class Explanation(BaseModel):
@@ -163,8 +166,14 @@ class ImpactReport(BaseModel):
     audience_fit: float = 0.0
     niche_index: float = 0.0
     negative_signal_risk: float = 0.0
+    stability: float = 0.0
     confidence: float = 0.0
     reach_pct: float = 0.0
+    inference_path: str = "heuristic"
+    simulator_version: str = ""
+    calibration_version: str = ""
+    config_version: str = ""
+    prompt_version: str = ""
 
 
 class CompareDelta(BaseModel):

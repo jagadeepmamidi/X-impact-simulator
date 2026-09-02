@@ -111,6 +111,9 @@ export type ImpactReport = {
     reached_round_p50: number;
     out_of_network: boolean;
     graph?: SpreadGraph;
+    exposure_p10?: number;
+    exposure_p50?: number;
+    exposure_p90?: number;
   };
   explanation: {
     headline: string;
@@ -122,9 +125,13 @@ export type ImpactReport = {
   audience_fit?: number;
   niche_index?: number;
   negative_signal_risk?: number;
+  stability?: number;
   confidence?: number;
   reach_pct?: number;
   heads_note?: string;
+  inference_path?: string;
+  simulator_version?: string;
+  calibration_version?: string;
 };
 
 export type CompareReport = {

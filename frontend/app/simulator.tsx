@@ -32,7 +32,7 @@ export function Simulator() {
 
   const mediaLabel = video?.name
     ?? (images.length > 1 ? `${images.length} images selected` : images[0]?.name)
-    ?? "Drop a video here, or click to choose.";
+    ?? "Drop a video or images here, or click to choose.";
 
   const onFiles = (list: FileList | File[]) => {
     const files = [...list];
@@ -116,11 +116,11 @@ export function Simulator() {
       </header>
 
       <form onSubmit={onSubmit} className="flex flex-1 flex-col">
-        <Section index="01" title="Input" aside="Drop a video, pick a target demographic, run">
+        <Section index="01" title="Input" aside="Drop video or images, pick a target demographic, run">
           <div className="border border-[var(--line)] bg-white">
             <div className="grid gap-0 md:grid-cols-[2.05fr_0.62fr_0.55fr_8.75rem]">
               <DropCell
-                label="Video"
+                label="Video or images"
                 filename={mediaLabel}
                 filled={Boolean(video || images.length)}
                 onClick={() => mediaInput.current?.click()}
@@ -157,11 +157,11 @@ export function Simulator() {
                 onChange={(e) => setPopulation(e.target.value)}
                 className="w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none"
               >
-                <option value="40">40 agents</option>
-                <option value="100">100 agents</option>
-                <option value="320">320 agents</option>
+                <option value="40">40 simulated agents</option>
+                <option value="100">100 simulated agents</option>
+                <option value="320">320 simulated agents</option>
               </select>
-              <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">~{population} persons in this run</p>
+              <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">~{population} simulated agents in this run</p>
               <label className="lab-label mt-5 block" htmlFor="boost">Boost</label>
               <input
                 id="boost"
@@ -198,7 +198,7 @@ export function Simulator() {
           />
         </Section>
 
-        <Section index="02" title="Spread" aside={compare ? "Hook A map — red solid = shared directly — grey dashed = shown by algo" : "All personas plotted — red solid = shared directly — grey dashed = shown by algo"}>
+        <Section index="02" title="Spread" aside={compare ? "Hook A map — red solid = shared directly — grey dashed = shown by algo — nodes are simulated agents" : "Simulated agents — red solid = shared directly — grey dashed = shown by algo"}>
           <SpreadView
             report={report}
             loading={loading}
@@ -213,7 +213,7 @@ export function Simulator() {
 
       <footer className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4 text-[12px] text-[var(--muted)]">
         <p>
-          {population}-agent population · 6-round cap · velocity-gated{report?.run_id ? ` · ${report.run_id}` : ""}
+          {population}-agent simulated population · 6-round cap · velocity-gated{report?.run_id ? ` · ${report.run_id}` : ""}
           {" · "}
           <a href={GITHUB_REPO} className="text-[var(--fg)] hover:underline" target="_blank" rel="noreferrer">GitHub</a>
         </p>
@@ -306,7 +306,7 @@ function DropCell({
       >
         <span className={filled ? "font-medium" : "text-[var(--muted)]"}>{filename}</span>
       </button>
-      <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">Videos run through the video→JSON pipeline on Run.</p>
+      <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">Videos and images run through the media pipeline on Run.</p>
     </div>
   );
 }
@@ -330,7 +330,7 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
       <div className="flex h-[12.5rem] flex-col justify-center border border-[var(--line)] bg-white px-8">
         <p className="text-[18px] font-semibold">Verdict lands here.</p>
         <p className="mt-2 max-w-2xl text-[13px] leading-5 text-[var(--muted)]">
-          p10–p90, Niche Index, fit, risk, and rewrite suggestions render after a run.
+          p10–p90 of the full cascade, Niche Index, fit, risk, and rewrite suggestions render after a run.
         </p>
       </div>
     );
@@ -360,7 +360,15 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
       <p className="text-[28px] font-semibold tracking-tight">{punchline(inTarget, outTarget, reachPct)}</p>
       <p className="mt-2 max-w-3xl text-[13px] leading-5 text-[var(--muted)]">{report.explanation.summary}</p>
       <div className="mt-5 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-5">
-        <Metric label="Total reach" value={`${Math.round(reachPct)}%`} note={`${shown.length} of ${people.length} agents`} />
+        <Metric
+          label="Simulated exposure"
+          value={`${Math.round(reachPct)}%`}
+          note={`${shown.length} of ${people.length} simulated agents${
+            report.simulation.exposure_p10 != null
+              ? ` · MC p10–p90 ${Math.round(report.simulation.exposure_p10)}–${Math.round(report.simulation.exposure_p90)}%`
+              : ""
+          }`}
+        />
         <div className="border-t border-[var(--line)] p-3 sm:border-t-0 sm:border-l">
           <p className="lab-label">% of target</p>
           <p className="mt-1 text-[22px] font-semibold">{ofTarget}/100</p>
@@ -382,17 +390,25 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
         </div>
       </div>
       <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-5">
-        <Metric label="p10" value={report.simulation.score_p10.toFixed(0)} note="low-end impact" />
-        <Metric label="p50" value={report.simulation.score_p50.toFixed(0)} note="median impact" />
-        <Metric label="p90" value={report.simulation.score_p90.toFixed(0)} note="high-end impact" />
+        <Metric label="p10" value={report.simulation.score_p10.toFixed(0)} note="cascade score, low" />
+        <Metric label="p50" value={report.simulation.score_p50.toFixed(0)} note="median cascade score of shown agents" />
+        <Metric label="p90" value={report.simulation.score_p90.toFixed(0)} note="cascade score, high" />
         <Metric label="Niche Index" value={`${Math.round(report.niche_index ?? 0)}`} note="core-pack affinity" />
         <Metric label="Audience fit" value={`${Math.round(report.audience_fit ?? 0)}`} note="all-pack affinity" />
       </div>
       <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-3">
         <Metric label="Negative risk" value={`${Math.round(report.negative_signal_risk ?? 0)}`} note="mute / not-interested" />
-        <Metric label="Confidence" value={`${Math.round(report.confidence ?? 0)}`} note="tighter p10–p90 = higher" />
+        <Metric
+          label="Stability"
+          value={`${Math.round(report.stability ?? report.confidence ?? 0)}`}
+          note="tighter p10–p90 = more consistent runs, not statistical confidence"
+        />
         <div className="border-t border-[var(--line)] p-3 sm:border-t-0 sm:border-l">
-          <p className="lab-label">Calibration</p>
+          <p className="lab-label">Model path</p>
+          <p className="mt-2 text-[12px] leading-5 text-[var(--muted)]">
+            {(report.inference_path || (report.groq_used ? "groq" : "heuristic")).toUpperCase()}
+            {report.calibration_version ? ` · ${report.calibration_version}` : ""}
+          </p>
           <p className="mt-2 text-[12px] leading-5 text-[var(--muted)]">{report.heads_note || "No trained heads applied."}</p>
         </div>
       </div>
@@ -408,12 +424,12 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
       )}
       {compare && (
         <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-3">
-          <Metric label="Hook A" value={compare.a.impact_score.toFixed(0)} note={`niche ${Math.round(compare.a.niche_index ?? 0)} · reach ${Math.round(compare.a.reach_pct ?? 0)}%`} />
-          <Metric label="Hook B" value={compare.b.impact_score.toFixed(0)} note={`niche ${Math.round(compare.b.niche_index ?? 0)} · reach ${Math.round(compare.b.reach_pct ?? 0)}%`} />
+          <Metric label="Hook A" value={compare.a.impact_score.toFixed(0)} note={`niche ${Math.round(compare.a.niche_index ?? 0)} · exposure ${Math.round(compare.a.reach_pct ?? 0)}%`} />
+          <Metric label="Hook B" value={compare.b.impact_score.toFixed(0)} note={`niche ${Math.round(compare.b.niche_index ?? 0)} · exposure ${Math.round(compare.b.reach_pct ?? 0)}%`} />
           <Metric
             label="B − A"
             value={signed(compare.delta.impact_score)}
-            note={`niche ${signed(compare.delta.niche_index)} · fit ${signed(compare.delta.audience_fit)} · reach ${signed(compare.delta.reach_pct)}`}
+            note={`niche ${signed(compare.delta.niche_index)} · fit ${signed(compare.delta.audience_fit)} · exposure ${signed(compare.delta.reach_pct)}`}
           />
         </div>
       )}

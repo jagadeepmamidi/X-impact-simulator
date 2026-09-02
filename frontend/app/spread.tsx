@@ -410,7 +410,7 @@ export function SpreadView({
 
           {!idle ? (
             <div className="absolute bottom-3 left-3 z-10 flex flex-wrap gap-x-3 gap-y-1 bg-white/90 px-2 py-1 text-[11px] text-[var(--muted)]">
-              <LegendDot color="#3b82f6" label="in-target" />
+              <LegendDot color="#3b82f6" label="in-target simulated agents" />
               <LegendDot color="#f59a3d" label="out-of-target" />
               <LegendDot color="#d2d2d0" label="never shown" />
               <span className="inline-flex items-center gap-1.5">
@@ -437,10 +437,10 @@ export function SpreadView({
               <AgentCard agent={selected} />
             ) : loading && !graph ? (
               <p className="font-[family-name:var(--font-geist-mono)] text-[11px] uppercase tracking-wide text-[var(--muted)]">
-                creating persona population ({tick} of {population})
+                creating simulated population ({tick} of {population})
               </p>
             ) : (
-              <p className="text-[12px] leading-5 text-[var(--muted)]">Click a blob to inspect that persona.</p>
+              <p className="text-[12px] leading-5 text-[var(--muted)]">Click a blob to inspect that simulated agent.</p>
             )}
           </aside>
         )}

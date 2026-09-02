@@ -4,15 +4,16 @@ Experimental X-inspired audience and distribution simulator. **Comparative, not 
 
 Repo: [github.com/jagadeepmamidi/X-impact-simulator](https://github.com/jagadeepmamidi/X-impact-simulator)
 
-A creator submits a draft (caption, up to 5 images, or a short video). Fifteen niche archetypes emit Phoenix-style P(action) probabilities. Python scores them with public RankingScorer weights from [xai-org/x-algorithm](https://github.com/xai-org/x-algorithm), then runs a Monte Carlo spread. Groq never emits `impact_score`.
+Fifteen niche archetypes emit Phoenix-style *affinities*. Python maps those onto assumed impression-level base rates, scores them with public RankingScorer weights from [xai-org/x-algorithm](https://github.com/xai-org/x-algorithm), then runs a Monte Carlo **full-cascade** spread. Groq never emits `impact_score`. p10–p90 describe the final-round score of the same graph simulation shown in the UI.
 
 ## What you can do
 
-- Score a hook against **tech**, **fitness**, **finance**, or **comedy** packs (15 archetypes each, cloned to 40 / 100 / 320 agents)
+- Score a hook against **tech**, **fitness**, **finance**, or **comedy** packs (15 archetypes each, cloned to 40 / 100 / 320 simulated agents)
 - Optional **Hook B** compare on the same media and seed
-- Verdict with p10–p90, Niche Index, audience fit, negative risk, confidence, and rewrite suggestions
+- Verdict with full-cascade p10–p90, Niche Index, audience fit, negative risk, **stability** (not statistical confidence), and rewrite suggestions
 - Save every run and **replay by id**
-- BluePrint heads blend **favorite (75%)** and **retweet (35%)** only
+- BluePrint heads blend **favorite (40%)** and **retweet (25%)** only
+- LLM/heuristic 0–1 heads are **affinities**; Python maps them onto assumed impression-level priors before RankingScorer weights run
 
 ## Local run
 

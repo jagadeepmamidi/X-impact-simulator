@@ -1,5 +1,6 @@
 """RankingScorer weighted mode from xai-org/x-algorithm."""
 
+from app.calibration import CALIBRATION_NOTE, to_ui_score as calibrated_ui_score
 from app.schemas import PersonaReaction
 
 # param.rs last sync 2026-09-01T16:42:25Z; tree 7ba776848b12d8422eb0f291ee03ea5c17ab0188
@@ -39,7 +40,8 @@ WEIGHTS_NOTE = (
     "Score = RankingScorer weighted mode: sum(w_i * P(action_i)), then +0.001 "
     "offset, then OON x 0.75. Weights from xai-org/x-algorithm "
     "home-mixer/params/param.rs (sync 2026-09-01). Weights scale predicted "
-    "probabilities, not raw counts. Not Phoenix, not the live graph, not production."
+    "impression-level probabilities, not raw counts. Not Phoenix, not the live "
+    "graph, not production. " + CALIBRATION_NOTE
 )
 
 DISCLAIMER = (
@@ -140,7 +142,7 @@ def ranking_score(reactions: list[PersonaReaction], *, in_network: bool = True) 
 
 
 def to_ui_score(raw: float) -> float:
-    return round(clamp01(raw / 6.0) * 100.0, 1)
+    return calibrated_ui_score(raw)
 
 
 def audience_score(reactions: list[PersonaReaction], in_network: bool = True) -> float:

@@ -20,6 +20,9 @@ app.add_middleware(
 ALLOWED_NICHES: tuple[Niche, ...] = ("tech", "fitness", "finance", "comedy")
 IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime"}
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_VIDEO_BYTES = 32 * 1024 * 1024
+MAX_TOTAL_BYTES = 40 * 1024 * 1024
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PUBLIC_DIR = REPO_ROOT / "frontend" / "public"
 
@@ -87,18 +90,31 @@ async def _read_media(
     video: UploadFile | None,
 ) -> tuple[list[tuple[bytes, str]], tuple[bytes, str] | None]:
     image_blobs: list[tuple[bytes, str]] = []
+    total = 0
     for item in (images or [])[:5]:
         mime = item.content_type or "image/jpeg"
         if mime not in IMAGE_TYPES:
             raise HTTPException(400, f"Unsupported image type: {mime}")
-        image_blobs.append((await item.read(), mime))
+        data = await item.read()
+        if len(data) > MAX_IMAGE_BYTES:
+            raise HTTPException(413, f"Image exceeds {MAX_IMAGE_BYTES // (1024 * 1024)} MB")
+        total += len(data)
+        if total > MAX_TOTAL_BYTES:
+            raise HTTPException(413, "Combined upload exceeds 40 MB")
+        image_blobs.append((data, mime))
     video_blob: tuple[bytes, str] | None = None
     if video is not None and video.filename:
         mime = video.content_type or "video/mp4"
         if mime not in VIDEO_TYPES:
             raise HTTPException(400, f"Unsupported video type: {mime}")
+        data = await video.read()
+        if len(data) > MAX_VIDEO_BYTES:
+            raise HTTPException(413, f"Video exceeds {MAX_VIDEO_BYTES // (1024 * 1024)} MB")
+        total += len(data)
+        if total > MAX_TOTAL_BYTES:
+            raise HTTPException(413, "Combined upload exceeds 40 MB")
         suffix = ".webm" if "webm" in mime else ".mov" if "quicktime" in mime else ".mp4"
-        video_blob = (await video.read(), suffix)
+        video_blob = (data, suffix)
     return image_blobs, video_blob
 
 

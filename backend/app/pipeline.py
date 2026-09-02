@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from app.calibration import CALIBRATION_NOTE, calibrate_reactions
 from app.config import settings
 from app.groq_client import (
     groq_explain,
@@ -16,6 +17,12 @@ from app.media import encode_image_bytes, sample_video_frames, write_temp
 from app.metrics import scorecard
 from app.schemas import CompareDelta, CompareReport, ContentFeatures, Explanation, ImpactReport, Niche
 from app.scoring import DISCLAIMER, WEIGHTS_NOTE, audience_score
+from app.sim_config import (
+    CALIBRATION_VERSION,
+    CONFIG_VERSION,
+    PROMPT_VERSION,
+    SIMULATOR_VERSION,
+)
 from app.simulation import heuristic_reactions, load_overlays, load_pack, simulate
 from app.store import save_report
 
@@ -73,7 +80,7 @@ def template_explanation(score: float, reactions: list) -> Explanation:
     low = sorted(reactions, key=lambda r: r.negative_feedback_probability, reverse=True)[:1]
     names = ", ".join(r.persona_id.replace("_", " ") for r in top) or "the pack"
     return Explanation(
-        headline=f"Uncalibrated impact {score:.0f} / 100",
+        headline=f"Uncalibrated comparative score {score:.0f} / 100",
         summary=(
             f"Python scored predicted Phoenix P(action) with public RankingScorer weights. "
             f"Stronger fit: {names}. "
@@ -101,13 +108,19 @@ def run_pipeline(
     personas = load_pack(niche)
     overlays = load_overlays(niche)
     content = extract_content(text, image_blobs, video)
-    reactions = groq_persona_reactions(personas, content)
-    if not reactions:
+    llm_reactions = groq_persona_reactions(personas, content)
+    if llm_reactions:
+        reactions = llm_reactions
+        inference_path = "groq"
+    else:
         reactions = heuristic_reactions(personas, content.model_dump())
+        inference_path = "heuristic"
     head_text = " ".join(
         part for part in (text.strip(), content.transcript_excerpt, " ".join(content.topics)) if part
     )
     reactions, heads_used = apply_trained_heads(reactions, head_text)
+    affinities = reactions
+    reactions = calibrate_reactions(affinities)
     used_seed = settings.sim_seed if seed is None else seed
     n_pop = population if population in (40, 100, 320) else 100
     n_boost = max(1, min(12, boost))
@@ -123,6 +136,7 @@ def run_pipeline(
         target_text=text,
         topics=list(content.topics),
         overlays=overlays,
+        sample_reactions=affinities,
     )
     impact = audience_score(reactions)
     card = scorecard(reactions, personas, content, simulation)
@@ -133,13 +147,16 @@ def run_pipeline(
         "content": content.model_dump(),
         "reactions": [r.model_dump() for r in reactions],
         "rounds": [r.model_dump() for r in simulation.rounds],
+        "inference_path": inference_path,
+        "calibrated": True,
     }
     explanation = groq_explain(slim) or template_explanation(impact, reactions)
+    heads_note = HEADS_NOTE if heads_used else "No trained heads applied."
     report = ImpactReport(
         experimental=True,
         disclaimer=DISCLAIMER,
         niche=niche,
-        groq_used=settings.groq_enabled,
+        groq_used=inference_path == "groq",
         content=content,
         reactions=reactions,
         simulation=simulation,
@@ -147,12 +164,18 @@ def run_pipeline(
         explanation=explanation,
         weights_note=WEIGHTS_NOTE,
         heads_used=heads_used,
-        heads_note=HEADS_NOTE if heads_used else "No trained heads applied.",
+        heads_note=f"{heads_note} {CALIBRATION_NOTE}",
         audience_fit=card["audience_fit"],
         niche_index=card["niche_index"],
         negative_signal_risk=card["negative_signal_risk"],
-        confidence=card["confidence"],
+        stability=card["stability"],
+        confidence=card["stability"],
         reach_pct=card["reach_pct"],
+        inference_path=f"{inference_path}{'+heads' if heads_used else ''}+calibrated",
+        simulator_version=SIMULATOR_VERSION,
+        calibration_version=CALIBRATION_VERSION,
+        config_version=CONFIG_VERSION,
+        prompt_version=PROMPT_VERSION,
     )
     if persist:
         report = report.model_copy(update={"run_id": save_report(report)})

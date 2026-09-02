@@ -1,3 +1,4 @@
+from app.calibration import calibrate_reactions
 from app.heads import FAVORITE_BLEND, HEADS_NOTE, RETWEET_BLEND
 from app.metrics import scorecard
 from app.schemas import ContentFeatures, Explanation, ImpactReport, SimulationSummary
@@ -7,7 +8,7 @@ from app.store import load_report, save_report
 
 def test_scorecard_bounds() -> None:
     pack = load_pack("tech")
-    reactions = heuristic_reactions(
+    affinities = heuristic_reactions(
         pack,
         {
             "topics": ["AI tools"],
@@ -19,6 +20,7 @@ def test_scorecard_bounds() -> None:
             "visual_hook": 0.0,
         },
     )
+    reactions = calibrate_reactions(affinities)
     sim = simulate(
         reactions,
         seed=3,
@@ -28,10 +30,12 @@ def test_scorecard_bounds() -> None:
         personas=pack,
         population=40,
         boost=6,
+        sample_reactions=affinities,
     )
     card = scorecard(reactions, pack, ContentFeatures(topics=["AI tools"]), sim)
-    for key in ("audience_fit", "niche_index", "negative_signal_risk", "confidence", "reach_pct"):
+    for key in ("audience_fit", "niche_index", "negative_signal_risk", "stability", "confidence", "reach_pct"):
         assert 0 <= card[key] <= 100
+    assert card["stability"] == card["confidence"]
 
 
 def test_store_roundtrip() -> None:
@@ -69,8 +73,8 @@ def test_store_roundtrip() -> None:
 
 
 def test_heads_favorite_retweet_only() -> None:
-    assert FAVORITE_BLEND == 0.75
-    assert RETWEET_BLEND == 0.35
+    assert FAVORITE_BLEND == 0.40
+    assert RETWEET_BLEND == 0.25
     low = HEADS_NOTE.lower()
     assert "favorite" in low and "retweet" in low
-    assert "75%" in HEADS_NOTE and "35%" in HEADS_NOTE
+    assert "40%" in HEADS_NOTE and "25%" in HEADS_NOTE

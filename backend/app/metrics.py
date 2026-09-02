@@ -31,7 +31,7 @@ def scorecard(
     niche_index = clamp01(niche_raw * (1.0 - 0.35 * content.promotional_intensity)) * 100.0
     negative_signal_risk = _mean([r.negative_feedback_probability for r in reactions]) * 100.0
     spread = max(0.0, simulation.score_p90 - simulation.score_p10)
-    confidence = clamp01(1.0 - spread / 45.0) * 100.0
+    stability = clamp01(1.0 - spread / 45.0) * 100.0
     people = [a for a in simulation.graph.agents if a.cohort != "origin"]
     shown = [a for a in people if a.cohort != "never_shown"]
     reach_pct = (len(shown) / len(people) * 100.0) if people else 0.0
@@ -39,6 +39,7 @@ def scorecard(
         "audience_fit": round(audience_fit, 1),
         "niche_index": round(niche_index, 1),
         "negative_signal_risk": round(negative_signal_risk, 1),
-        "confidence": round(confidence, 1),
+        "stability": round(stability, 1),
+        "confidence": round(stability, 1),
         "reach_pct": round(reach_pct, 1),
     }
