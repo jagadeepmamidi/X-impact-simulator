@@ -437,10 +437,10 @@ export function SpreadView({
               <AgentCard agent={selected} />
             ) : loading && !graph ? (
               <p className="font-[family-name:var(--font-geist-mono)] text-[11px] uppercase tracking-wide text-[var(--muted)]">
-                creating persona population ({tick} of {population})
+                creating simulated population ({tick} of {population})
               </p>
             ) : (
-              <p className="text-[12px] leading-5 text-[var(--muted)]">Click a blob to inspect that persona.</p>
+              <p className="text-[12px] leading-5 text-[var(--muted)]">Click a blob to inspect that simulated agent.</p>
             )}
           </aside>
         )}

@@ -6,7 +6,7 @@
 
 `score = offset(sum(w_i * P(action_i)))`, then out-of-network x 0.75.
 
-Pinned: xai-org/x-algorithm tree 7ba776848b12d8422eb0f291ee03ea5c17ab0188. param.rs last sync 2026-09-01T16:42:25Z. NEGATIVE_SCORES_OFFSET = 0.001. UI 0-100 is clamp(raw / 6) * 100.
+Pinned: xai-org/x-algorithm tree 7ba776848b12d8422eb0f291ee03ea5c17ab0188. param.rs last sync 2026-09-01T16:42:25Z. NEGATIVE_SCORES_OFFSET = 0.001. Affinities are mapped through assumed impression-level priors before scoring. UI 0-100 is a sigmoid of that calibrated raw score, not clamp(raw / 6). p10–p90 are final-cascade Monte Carlo scores.
 
 Labeled Phoenix heads from BluePrint: favorite, reply, retweet, quote, follow_author, block_author. Share, dwell, click, mute, report stay heuristic/Groq until labeled.
 

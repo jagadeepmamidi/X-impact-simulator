@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     sim_max_rounds: int = 6
     port: int = 8000
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_origin_regex: str = ""
+    sim_api_key: str = ""
+    rate_limit_requests: int = 60
+    rate_limit_window_seconds: int = 60
 
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),

@@ -93,6 +93,7 @@ class RoundResult(BaseModel):
     score: float
     stopped: bool = False
     stop_reason: str | None = None
+    stage: str = "seed"
 
 
 Cohort = Literal["origin", "in_target", "out_of_target", "never_shown"]
@@ -137,6 +138,9 @@ class SimulationSummary(BaseModel):
     reached_round_p50: float
     out_of_network: bool
     graph: SpreadGraph = Field(default_factory=SpreadGraph)
+    exposure_p10: float = 0.0
+    exposure_p50: float = 0.0
+    exposure_p90: float = 0.0
 
 
 class Explanation(BaseModel):
@@ -163,8 +167,24 @@ class ImpactReport(BaseModel):
     audience_fit: float = 0.0
     niche_index: float = 0.0
     negative_signal_risk: float = 0.0
+    stability: float = 0.0
     confidence: float = 0.0
     reach_pct: float = 0.0
+    inference_path: str = "heuristic"
+    simulator_version: str = ""
+    calibration_version: str = ""
+    config_version: str = ""
+    prompt_version: str = ""
+    input_text: str = ""
+    population: int = 100
+    boost: int = 6
+    llm_model: str = ""
+    parent_run_id: str | None = None
+    affinity_reactions: list[PersonaReaction] = Field(default_factory=list)
+    distribution_potential: float = 0.0
+    engagement_quality: float = 0.0
+    profile_impact: float = 50.0
+    stop_reason: str = ""
 
 
 class CompareDelta(BaseModel):
@@ -173,6 +193,19 @@ class CompareDelta(BaseModel):
     audience_fit: float
     reach_pct: float
     confidence: float
+    distribution_potential: float = 0.0
+    engagement_quality: float = 0.0
+    profile_impact: float = 0.0
+
+
+class OutcomeRecord(BaseModel):
+    run_id: str
+    impressions: float | None = None
+    likes: float | None = None
+    replies: float | None = None
+    reposts: float | None = None
+    follows: float | None = None
+    note: str = ""
 
 
 class CompareReport(BaseModel):

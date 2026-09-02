@@ -17,10 +17,10 @@ from app.schemas import (
     SpreadGraph,
 )
 from app.scoring import audience_score, clamp01
+from app.sim_config import DEFAULT_SIM_CONFIG, SimulationConfig
 
 PACK_DIR = Path(__file__).resolve().parent.parent / "data" / "packs"
 OVERLAY_DIR = Path(__file__).resolve().parent.parent / "data" / "overlays"
-STOP_THRESHOLD = 38.0
 ACTIONS: list[Action] = [
     "ignore",
     "like",
@@ -113,7 +113,8 @@ def _target_fit(persona: Persona, target_text: str, topics: list[str], affinity:
         return float(affinity)
     hits = sum(1.0 for t in needles if _stem_hit(t, hay))
     overlap = hits / max(3.0, min(len(needles), 10))
-    return 0.35 * overlap + 0.65 * float(affinity)
+    cfg = DEFAULT_SIM_CONFIG
+    return cfg.affinity_overlap_weight * overlap + cfg.affinity_llm_weight * float(affinity)
 
 
 def heuristic_reactions(personas: list[Persona], features: dict) -> list[PersonaReaction]:
@@ -132,12 +133,12 @@ def heuristic_reactions(personas: list[Persona], features: dict) -> list[Persona
         overlap = len(topics.intersection({i.lower() for i in p.interests}))
         affinity = clamp01(0.25 + 0.2 * overlap + 0.15 * (1 - abs(p.expertise - novelty)))
         like = _sigmoid(
-            -0.6
-            + 1.8 * affinity
-            + 1.1 * hook * p.activity_level
-            + 0.8 * clarity
-            + 0.4 * visual
-            - 1.4 * max(0, promo - p.promotional_tolerance)
+            -1.6
+            + 2.0 * affinity
+            + 1.0 * hook * p.activity_level
+            + 0.6 * clarity
+            + 0.35 * visual
+            - 2.2 * max(0, promo - p.promotional_tolerance)
         )
         reply = clamp01(like * (0.25 + p.reply_tendency) * (0.5 + p.evidence_demand * controversy))
         repost = clamp01(like * (0.2 + p.repost_tendency) * (0.4 + p.novelty_seeking * novelty))
@@ -205,7 +206,7 @@ def _action_probs(r: PersonaReaction, noise: np.ndarray) -> np.ndarray:
     raw = np.array(
         [
             max(
-                0.05,
+                DEFAULT_SIM_CONFIG.min_ignore_mass,
                 1.0
                 - r.like_probability
                 - r.reply_probability
@@ -223,77 +224,37 @@ def _action_probs(r: PersonaReaction, noise: np.ndarray) -> np.ndarray:
         ],
         dtype=float,
     )
-    raw = np.clip(raw * (1.0 + 0.25 * noise), 1e-6, None)
+    raw = np.clip(raw * (1.0 + DEFAULT_SIM_CONFIG.action_noise_sigma * noise), 1e-6, None)
     return raw / raw.sum()
 
 
-def _jitter(r: PersonaReaction, rng: np.random.Generator) -> PersonaReaction:
+def _jitter(r: PersonaReaction, rng: np.random.Generator, cfg: SimulationConfig | None = None) -> PersonaReaction:
+    cfg = cfg or DEFAULT_SIM_CONFIG
+
     def j(p: float) -> float:
-        return round(float(np.clip(p + rng.normal(0, 0.05), 0.0, 1.0)), 3)
+        return round(float(np.clip(p + rng.normal(0, cfg.jitter_sigma), 0.0, 1.0)), 3)
 
     update = {field: j(getattr(r, field)) for field in PROB_FIELDS}
-    update["dwell_time"] = round(max(0.0, r.dwell_time + float(rng.normal(0, 0.4))), 3)
+    update["dwell_time"] = round(max(0.0, r.dwell_time + float(rng.normal(0, cfg.dwell_jitter_sigma))), 3)
     return r.model_copy(update=update)
-
-
-def _one_run(
-    reactions: list[PersonaReaction],
-    rng: np.random.Generator,
-    users_per_persona: int,
-    max_rounds: int,
-) -> list[RoundResult]:
-    audience = users_per_persona * len(reactions)
-    jittered = [_jitter(r, rng) for r in reactions]
-    rounds: list[RoundResult] = []
-    for n in range(1, max_rounds + 1):
-        in_network = n == 1
-        score = audience_score(jittered, in_network=in_network)
-        counts = {a: 0 for a in ACTIONS}
-        for r in jittered:
-            for _ in range(max(1, audience // len(jittered))):
-                noise = rng.normal(0, 1, size=len(ACTIONS))
-                probs = _action_probs(r, noise)
-                pick = ACTIONS[int(rng.choice(len(ACTIONS), p=probs))]
-                counts[pick] += 1
-        stopped = score < STOP_THRESHOLD
-        rounds.append(
-            RoundResult(
-                round=n,
-                audience_size=audience,
-                likes=counts["like"],
-                replies=counts["reply"],
-                reposts=counts["repost"],
-                quotes=counts["quote"],
-                shares=counts["share"],
-                follows=counts["follow"],
-                negatives=counts["negative"],
-                ignores=counts["ignore"],
-                score=score,
-                stopped=stopped,
-                stop_reason="Below distribution threshold." if stopped else None,
-            )
-        )
-        if stopped:
-            break
-        growth = 1.35 + 0.9 * ((counts["repost"] + counts["quote"] + counts["share"]) / max(1, audience))
-        audience = int(min(8000, max(audience + 20, audience * growth)))
-    return rounds
 
 
 SHARE_ACTIONS = {"repost", "quote", "share"}
 
 
-def _sample_action(r: PersonaReaction, rng: np.random.Generator, oon: bool) -> Action:
+def _sample_action(r: PersonaReaction, rng: np.random.Generator, oon: bool, cfg: SimulationConfig | None = None) -> Action:
+    cfg = cfg or DEFAULT_SIM_CONFIG
     scaled = r
     if oon:
+        s = cfg.oon_action_scale
         scaled = r.model_copy(
             update={
-                "like_probability": r.like_probability * 0.75,
-                "reply_probability": r.reply_probability * 0.75,
-                "repost_probability": r.repost_probability * 0.75,
-                "quote_probability": r.quote_probability * 0.75,
-                "share_probability": r.share_probability * 0.75,
-                "follow_probability": r.follow_probability * 0.75,
+                "like_probability": r.like_probability * s,
+                "reply_probability": r.reply_probability * s,
+                "repost_probability": r.repost_probability * s,
+                "quote_probability": r.quote_probability * s,
+                "share_probability": r.share_probability * s,
+                "follow_probability": r.follow_probability * s,
             }
         )
     noise = rng.normal(0, 1, size=len(ACTIONS))
@@ -315,6 +276,7 @@ def _round_result(
     score: float,
     stopped: bool,
     reason: str | None,
+    stage: str = "seed",
 ) -> RoundResult:
     counts = _counts(fresh)
     return RoundResult(
@@ -331,7 +293,28 @@ def _round_result(
         score=score,
         stopped=stopped,
         stop_reason=reason,
+        stage=stage,
     )
+
+
+def _stage_for_round(n: int) -> str:
+    if n <= 1:
+        return "seed"
+    if n == 2:
+        return "adjacent"
+    if n == 3:
+        return "niche"
+    return "general"
+
+
+def _stage_in_pref(stage: str, cfg: SimulationConfig) -> float:
+    if stage == "adjacent":
+        return cfg.adjacent_in_pref
+    if stage == "niche":
+        return cfg.niche_in_pref
+    if stage == "general":
+        return cfg.general_in_pref
+    return cfg.share_target_preference
 
 
 def graph_run(
@@ -344,8 +327,13 @@ def graph_run(
     target_text: str = "",
     topics: list[str] | None = None,
     overlays: list[Persona] | None = None,
+    cfg: SimulationConfig | None = None,
+    sample_reactions: list[PersonaReaction] | None = None,
 ) -> tuple[list[RoundResult], SpreadGraph]:
+    cfg = cfg or DEFAULT_SIM_CONFIG
     by_id = {r.persona_id: r for r in reactions}
+    sample_src = sample_reactions or reactions
+    by_sample = {r.persona_id: r for r in sample_src}
     roster = personas or [
         Persona(
             id=r.persona_id,
@@ -367,7 +355,7 @@ def graph_run(
     if not roster or not reactions:
         return [], SpreadGraph()
 
-    n_pop = int(np.clip(population, 8, 320))
+    n_pop = int(np.clip(population, cfg.min_population, cfg.max_population))
     n_boost = int(np.clip(boost, 1, min(12, n_pop)))
     lookup = {p.id: p for p in roster}
     fallback = roster[0]
@@ -377,7 +365,8 @@ def graph_run(
     for i in range(n_pop):
         persona = roster[i % n_types]
         base = by_id.get(persona.id) or reactions[i % len(reactions)]
-        jittered = _jitter(base, rng)
+        sample_base = by_sample.get(persona.id) or sample_src[i % len(sample_src)]
+        sample_jittered = _jitter(sample_base, rng, cfg)
         copy = i // n_types + 1
         name = persona.name
         role = persona.role
@@ -396,7 +385,8 @@ def graph_run(
                 "name": name,
                 "role": role,
                 "interests": interests,
-                "reaction": jittered,
+                "reaction": base,
+                "sample_reaction": sample_jittered,
                 "shown_round": None,
                 "action": "ignore",
                 "cohort": "never_shown",
@@ -413,7 +403,7 @@ def graph_run(
         for p in roster
     }
     unique_fits = np.array(list(type_fit.values())) if type_fit else np.array([0.0])
-    cutoff = float(np.percentile(unique_fits, 40))
+    cutoff = float(np.percentile(unique_fits, cfg.target_fit_cutoff_percentile))
     in_ids = {
         pid
         for pid, fit in type_fit.items()
@@ -464,11 +454,11 @@ def graph_run(
         slot = slots[idx]
         slot["shown_round"] = round_n
         slot["cohort"] = "in_target" if slot["in_target"] else "out_of_target"
-        slot["action"] = _sample_action(slot["reaction"], rng, oon=oon)
+        slot["action"] = _sample_action(slot["sample_reaction"], rng, oon=oon, cfg=cfg)
         edges.append(SpreadEdge(source=source, target=slot["id"], kind=kind, round=round_n))
         shown.append(idx)
 
-    n_out = max(1, min(n_boost - 1, int(round(n_boost * 0.35)))) if n_boost > 1 else 0
+    n_out = max(1, min(n_boost - 1, int(round(n_boost * cfg.out_of_target_seed_frac)))) if n_boost > 1 else 0
     n_in = n_boost - n_out
     fresh: list[int] = []
     for prefer_in, count in ((True, n_in), (False, n_out)):
@@ -487,6 +477,7 @@ def graph_run(
             score,
             False,
             None,
+            "seed",
         )
     )
 
@@ -494,22 +485,28 @@ def graph_run(
     for n in range(2, max_rounds + 1):
         if not in_q and not out_q:
             break
+        stage = _stage_for_round(n)
         prior = len(shown)
         fresh = []
         sharers = [i for i in shown if slots[i]["action"] in SHARE_ACTIONS]
+        share_pref = _stage_in_pref(stage, cfg)
         for src in sharers:
-            fanout = int(rng.integers(1, 4))
+            fanout = int(rng.integers(cfg.share_fanout_min, cfg.share_fanout_max + 1))
             for _ in range(fanout):
-                idx = take(prefer_in=bool(rng.random() < 0.45))
+                idx = take(prefer_in=bool(rng.random() < share_pref))
                 if idx is None:
                     break
                 reveal(idx, n, slots[src]["id"], "share", oon=not slots[idx]["in_target"])
                 fresh.append(idx)
         remaining = len(in_q) + len(out_q)
-        algo_n = min(remaining, max(2, int(0.08 * n_pop)))
+        prev_score = rounds[-1].score if rounds else 0.0
+        algo_n = min(remaining, max(2, int(cfg.algo_exposure_rate * n_pop)))
+        if prev_score < cfg.algo_quality_floor:
+            algo_n = 0
         parents = shown[:] or [0]
+        algo_pref = _stage_in_pref(stage, cfg)
         for _ in range(algo_n):
-            idx = take(prefer_in=bool(rng.random() < 0.25))
+            idx = take(prefer_in=bool(rng.random() < algo_pref))
             if idx is None:
                 break
             parent = slots[int(rng.choice(parents))]
@@ -518,8 +515,15 @@ def graph_run(
         score = audience_score([slots[i]["reaction"] for i in shown], in_network=False) if shown else 0.0
         new = len(shown) - prior
         velocity = new / max(1, prior)
-        stopped = velocity < 0.10 and n >= 3
-        reason = f"stalled at round {n} — velocity < 10%." if stopped else None
+        neg_frac = sum(1 for i in shown if slots[i]["action"] == "negative") / max(1, len(shown))
+        stopped = False
+        reason = None
+        if neg_frac >= cfg.negative_stop_rate and n >= 2:
+            stopped = True
+            reason = f"negative-signal stop at round {n}."
+        elif velocity < cfg.velocity_stop_threshold and n >= cfg.velocity_stop_min_round:
+            stopped = True
+            reason = f"stalled at round {n} — velocity < {cfg.velocity_stop_threshold:.0%}."
         rounds.append(
             _round_result(
                 n,
@@ -528,6 +532,7 @@ def graph_run(
                 score,
                 stopped,
                 reason,
+                stage,
             )
         )
         if stopped:
@@ -573,6 +578,14 @@ def graph_run(
     return rounds, SpreadGraph(agents=agents, edges=edges)
 
 
+def _exposure_pct(graph: SpreadGraph) -> float:
+    people = [a for a in graph.agents if a.cohort != "origin"]
+    shown = [a for a in people if a.cohort != "never_shown"]
+    if not people:
+        return 0.0
+    return 100.0 * len(shown) / len(people)
+
+
 def simulate(
     reactions: list[PersonaReaction],
     seed: int,
@@ -585,38 +598,50 @@ def simulate(
     target_text: str = "",
     topics: list[str] | None = None,
     overlays: list[Persona] | None = None,
+    cfg: SimulationConfig | None = None,
+    sample_reactions: list[PersonaReaction] | None = None,
 ) -> SimulationSummary:
+    cfg = cfg or DEFAULT_SIM_CONFIG
     rng = np.random.default_rng(seed)
-    all_rounds: list[list[RoundResult]] = []
+    n_pop = population or users_per_persona * max(1, len(reactions))
     scores: list[float] = []
     depths: list[int] = []
-    for _ in range(runs):
-        run_seed = int(rng.integers(0, 1_000_000_000))
-        result = _one_run(reactions, np.random.default_rng(run_seed), users_per_persona, max_rounds)
-        all_rounds.append(result)
-        scores.append(result[0].score if result else 0.0)
+    exposures: list[float] = []
+    viz_rounds: list[RoundResult] = []
+    graph = SpreadGraph()
+    for i in range(max(1, runs)):
+        run_seed = seed if i == 0 else int(rng.integers(0, 1_000_000_000))
+        result, run_graph = graph_run(
+            reactions,
+            np.random.default_rng(run_seed),
+            population=n_pop,
+            boost=boost,
+            max_rounds=max_rounds,
+            personas=personas,
+            target_text=target_text,
+            topics=topics,
+            overlays=overlays,
+            cfg=cfg,
+            sample_reactions=sample_reactions,
+        )
+        final_score = result[-1].score if result else 0.0
+        scores.append(final_score)
         depths.append(len(result))
-    n_pop = population or users_per_persona * max(1, len(reactions))
-    viz_rounds, graph = graph_run(
-        reactions,
-        np.random.default_rng(seed),
-        population=n_pop,
-        boost=boost,
-        max_rounds=max_rounds,
-        personas=personas,
-        target_text=target_text,
-        topics=topics,
-        overlays=overlays,
-    )
+        exposures.append(_exposure_pct(run_graph))
+        if i == 0:
+            viz_rounds, graph = result, run_graph
     arr = np.array(scores) if scores else np.array([0.0])
     return SimulationSummary(
         seed=seed,
         runs=runs,
-        rounds=viz_rounds or (all_rounds[len(all_rounds) // 2] if all_rounds else []),
+        rounds=viz_rounds,
         score_p10=round(float(np.percentile(arr, 10)), 1),
         score_p50=round(float(np.percentile(arr, 50)), 1),
         score_p90=round(float(np.percentile(arr, 90)), 1),
         reached_round_p50=round(float(np.median(depths)), 1),
         out_of_network=bool(np.median(depths) >= 3),
         graph=graph,
+        exposure_p10=round(float(np.percentile(exposures, 10)), 1) if exposures else 0.0,
+        exposure_p50=round(float(np.percentile(exposures, 50)), 1) if exposures else 0.0,
+        exposure_p90=round(float(np.percentile(exposures, 90)), 1) if exposures else 0.0,
     )

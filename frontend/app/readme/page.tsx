@@ -20,18 +20,18 @@ export default function ReadmePage() {
 
         <h2 className="mt-8 text-[13px] font-semibold uppercase tracking-[0.08em]">What you can do</h2>
         <ul className="mt-3 list-disc space-y-1 pl-5">
-          <li>Score a hook against tech, fitness, finance, or comedy packs (15 archetypes, cloned to 40 / 100 / 320 agents).</li>
+          <li>Score a hook against tech, fitness, finance, or comedy packs (15 archetypes, cloned to 40 / 100 / 320 simulated agents).</li>
           <li>Optional Hook B compare on the same media and seed.</li>
-          <li>Verdict with p10–p90, Niche Index, audience fit, negative risk, confidence, and rewrite suggestions.</li>
+          <li>Verdict with full-cascade p10–p90, Niche Index, audience fit, negative risk, stability, and rewrite suggestions.</li>
           <li>Save every run and replay by id.</li>
-          <li>BluePrint heads blend favorite (75%) and retweet (35%) only.</li>
+          <li>BluePrint heads blend favorite (40%) and retweet (25%) only. Affinities are mapped through impression-level priors before scoring.</li>
         </ul>
 
         <h2 className="mt-8 text-[13px] font-semibold uppercase tracking-[0.08em]">Local run</h2>
         <p className="mt-3">Python 3.11+, Node 20+, Groq key in <code className="text-[13px]">.env</code>. Backend on :8000, frontend on :3000. Full commands live in the GitHub README.</p>
 
         <h2 className="mt-8 text-[13px] font-semibold uppercase tracking-[0.08em]">Disclaimer</h2>
-        <p className="mt-3 text-[var(--muted)]">Uncalibrated research prototype. Ranking weights follow a public snapshot of X&apos;s RankingScorer, not the production stack. Treat ranges as comparative, not forecasts.</p>
+        <p className="mt-3 text-[var(--muted)]">Uncalibrated research prototype. Ranking weights follow a public snapshot of X&apos;s RankingScorer, not the production stack. p10–p90 are the distribution of full-cascade scores across Monte Carlo runs of the same simulated graph. Treat ranges as comparative, not forecasts.</p>
       </article>
 
       <footer className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4 text-[12px] text-[var(--muted)]">

@@ -201,8 +201,14 @@ def groq_persona_reactions(
                     "role": "system",
                     "content": (
                         "Return JSON {\"reactions\": [...]} for each persona. "
-                        "Each item is Phoenix action heads used by RankingScorer: "
-                        "persona_id, topic_affinity, like_probability (favorite), "
+                        "Each probability is a 0-1 AFFINITY (how strongly this archetype "
+                        "would engage if shown the post), NOT an impression-level rate "
+                        "and NOT a feed-wide percentage. Python maps affinities onto "
+                        "base rates. Use the full 0-1 range: off-niche personas near 0.05-0.25, "
+                        "strong fit 0.55-0.85, almost nobody at 0.95. "
+                        "Copy-link, report, block, and follow affinities must stay low "
+                        "unless the post clearly invites that action. "
+                        "Fields: persona_id, topic_affinity, like_probability (favorite), "
                         "reply_probability, repost_probability (retweet), quote_probability, "
                         "share_probability, share_via_dm_probability, "
                         "share_via_copy_link_probability (rare, usually << share), "
@@ -247,7 +253,8 @@ def groq_explain(report: dict) -> Explanation | None:
                     "content": (
                         "You explain an uncalibrated simulation. JSON keys: "
                         "headline, summary, suggestions (3 strings). "
-                        "Never invent a new numeric impact score. Never claim virality."
+                        "Never invent a new numeric impact score. Never claim virality. "
+                        "Say comparative estimate, not prediction."
                     ),
                 },
                 {"role": "user", "content": json.dumps(report)[:18000]},

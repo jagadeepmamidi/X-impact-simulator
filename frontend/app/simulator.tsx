@@ -1,12 +1,31 @@
 "use client";
 
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
-import { NICHES, NICHE_COPY, type CompareReport, type ImpactReport, type Niche } from "@/lib/types";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { NICHES, NICHE_COPY, type CompareReport, type ImpactReport, type Niche, type OutcomeRecord } from "@/lib/types";
 import { GITHUB_REPO } from "@/lib/repo";
 import { SpreadView } from "./spread";
 import Link from "next/link";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const API = process.env.NEXT_PUBLIC_API_URL ?? "";
+const SIM_API_KEY = process.env.NEXT_PUBLIC_SIM_API_KEY ?? "";
+
+function apiHeaders(init?: HeadersInit) {
+  const headers = new Headers(init);
+  if (SIM_API_KEY) headers.set("X-API-Key", SIM_API_KEY);
+  return headers;
+}
+
+async function apiFetch(url: string, init?: RequestInit) {
+  const response = await fetch(url, { ...init, headers: apiHeaders(init?.headers) });
+  if (response.status === 401) throw new Error("API key required or invalid");
+  if (response.status === 429) throw new Error("Too many runs. Wait and try again.");
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    const message = typeof detail.detail === "string" ? detail.detail : `Request failed (${response.status})`;
+    throw new Error(message);
+  }
+  return response;
+}
 
 const NICHE_LABEL: Record<Niche, string> = {
   tech: "Tech",
@@ -32,7 +51,7 @@ export function Simulator() {
 
   const mediaLabel = video?.name
     ?? (images.length > 1 ? `${images.length} images selected` : images[0]?.name)
-    ?? "Drop a video here, or click to choose.";
+    ?? "Drop a video or images here, or click to choose.";
 
   const onFiles = (list: FileList | File[]) => {
     const files = [...list];
@@ -61,11 +80,7 @@ export function Simulator() {
       body.append("text", text);
     }
     try {
-      const response = await fetch(`${API}${comparing ? "/api/compare" : "/api/simulate"}`, { method: "POST", body });
-      if (!response.ok) {
-        const detail = await response.json().catch(() => ({}));
-        throw new Error(detail.detail || `Request failed (${response.status})`);
-      }
+      const response = await apiFetch(`${API}${comparing ? "/api/compare" : "/api/simulate"}`, { method: "POST", body });
       if (comparing) {
         const result = (await response.json()) as CompareReport;
         setCompare(result);
@@ -90,16 +105,31 @@ export function Simulator() {
     setError(null);
     setCompare(null);
     try {
-      const response = await fetch(`${API}/api/simulations/${encodeURIComponent(id)}`);
-      if (!response.ok) {
-        const detail = await response.json().catch(() => ({}));
-        throw new Error(detail.detail || `Unknown id (${response.status})`);
-      }
+      const response = await apiFetch(`${API}/api/simulations/${encodeURIComponent(id)}`);
       const loaded = (await response.json()) as ImpactReport;
       setReport(loaded);
       setNiche(loaded.niche);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Load failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onReplay = async () => {
+    const id = loadId.trim();
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    setCompare(null);
+    try {
+      const response = await apiFetch(`${API}/api/simulations/${encodeURIComponent(id)}/replay`, { method: "POST" });
+      const loaded = (await response.json()) as ImpactReport;
+      setReport(loaded);
+      setNiche(loaded.niche);
+      if (loaded.run_id) setLoadId(loaded.run_id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Replay failed");
     } finally {
       setLoading(false);
     }
@@ -116,11 +146,11 @@ export function Simulator() {
       </header>
 
       <form onSubmit={onSubmit} className="flex flex-1 flex-col">
-        <Section index="01" title="Input" aside="Drop a video, pick a target demographic, run">
+        <Section index="01" title="Input" aside="Drop video or images, pick a target demographic, run">
           <div className="border border-[var(--line)] bg-white">
             <div className="grid gap-0 md:grid-cols-[2.05fr_0.62fr_0.55fr_8.75rem]">
               <DropCell
-                label="Video"
+                label="Video or images"
                 filename={mediaLabel}
                 filled={Boolean(video || images.length)}
                 onClick={() => mediaInput.current?.click()}
@@ -157,11 +187,12 @@ export function Simulator() {
                 onChange={(e) => setPopulation(e.target.value)}
                 className="w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none"
               >
-                <option value="40">40 agents</option>
-                <option value="100">100 agents</option>
-                <option value="320">320 agents</option>
+                <option value="40">40 simulated agents</option>
+                <option value="100">100 simulated agents</option>
+                <option value="320">320 simulated agents</option>
+                <option value="500">500 simulated agents</option>
               </select>
-              <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">~{population} persons in this run</p>
+              <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">~{population} simulated agents in this run</p>
               <label className="lab-label mt-5 block" htmlFor="boost">Boost</label>
               <input
                 id="boost"
@@ -175,8 +206,8 @@ export function Simulator() {
               <p className="text-[11px] text-[var(--muted)]">{boost} seeds · round-1 initial reach</p>
             </Cell>
             <button
-              type="button"
-              onClick={() => onSubmit()}
+              id="run-sim"
+              type="submit"
               disabled={loading}
               className="flex min-h-[9.5rem] items-center justify-center rounded-none bg-[var(--run)] text-[13px] font-semibold tracking-[0.28em] text-white disabled:cursor-not-allowed disabled:opacity-50 md:min-h-full md:border-l md:border-[var(--line)]"
               style={{ writingMode: "vertical-rl" }}
@@ -184,6 +215,13 @@ export function Simulator() {
               {loading ? "RUNNING..." : textB.trim() ? "COMPARE" : "RUN"}
             </button>
           </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full border-t border-[var(--line)] bg-[var(--run)] py-3 text-[13px] font-semibold tracking-[0.28em] text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? "RUNNING..." : textB.trim() ? "COMPARE HOOKS" : "RUN SIMULATION"}
+          </button>
           {error && (
             <p className="border-t border-[var(--hairline)] px-3 py-2 text-[15px] text-[var(--danger)]">{error}</p>
           )}
@@ -198,7 +236,7 @@ export function Simulator() {
           />
         </Section>
 
-        <Section index="02" title="Spread" aside={compare ? "Hook A map — red solid = shared directly — grey dashed = shown by algo" : "All personas plotted — red solid = shared directly — grey dashed = shown by algo"}>
+        <Section index="02" title="Spread" aside={compare ? "Hook A map — red solid = shared directly — grey dashed = shown by algo — nodes are simulated agents" : "Simulated agents — red solid = shared directly — grey dashed = shown by algo"}>
           <SpreadView
             report={report}
             loading={loading}
@@ -211,9 +249,16 @@ export function Simulator() {
         </Section>
       </form>
 
+      {report?.run_id ? (
+        <Section index="04" title="Outcome" aside="Optional live numbers for later calibration — not scored yet">
+          <OutcomePanel runId={report.run_id} />
+        </Section>
+      ) : null}
+
       <footer className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4 text-[12px] text-[var(--muted)]">
         <p>
-          {population}-agent population · 6-round cap · velocity-gated{report?.run_id ? ` · ${report.run_id}` : ""}
+          {population}-agent simulated population · staged spread · velocity-gated{report?.run_id ? ` · ${report.run_id}` : ""}
+          {report?.parent_run_id ? ` · replay of ${report.parent_run_id}` : ""}
           {" · "}
           <a href={GITHUB_REPO} className="text-[var(--fg)] hover:underline" target="_blank" rel="noreferrer">GitHub</a>
         </p>
@@ -228,7 +273,7 @@ export function Simulator() {
             }}
             spellCheck={false}
             autoComplete="off"
-            placeholder="Replay by id"
+            placeholder="Run id"
             className="w-40 rounded-none border border-[var(--line)] bg-white px-2 py-1 text-[12px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
           />
           <button
@@ -238,6 +283,14 @@ export function Simulator() {
             className="border border-[var(--line)] px-2 py-1 text-[11px] font-semibold tracking-[0.12em] text-[var(--fg)] disabled:opacity-40"
           >
             LOAD
+          </button>
+          <button
+            type="button"
+            onClick={onReplay}
+            disabled={loading || !loadId.trim()}
+            className="border border-[var(--line)] px-2 py-1 text-[11px] font-semibold tracking-[0.12em] text-[var(--fg)] disabled:opacity-40"
+          >
+            REPLAY
           </button>
         </div>
       </footer>
@@ -306,7 +359,7 @@ function DropCell({
       >
         <span className={filled ? "font-medium" : "text-[var(--muted)]"}>{filename}</span>
       </button>
-      <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">Videos run through the video→JSON pipeline on Run.</p>
+      <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">Videos and images run through the media pipeline on Run.</p>
     </div>
   );
 }
@@ -330,7 +383,7 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
       <div className="flex h-[12.5rem] flex-col justify-center border border-[var(--line)] bg-white px-8">
         <p className="text-[18px] font-semibold">Verdict lands here.</p>
         <p className="mt-2 max-w-2xl text-[13px] leading-5 text-[var(--muted)]">
-          p10–p90, Niche Index, fit, risk, and rewrite suggestions render after a run.
+          p10–p90 of the full cascade, Niche Index, fit, risk, and rewrite suggestions render after a run.
         </p>
       </div>
     );
@@ -353,14 +406,31 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
       : outTarget > inTarget
         ? "Crossover more than in-demo"
         : "Comparative, not predictive";
+  const stages = [...new Set(report.simulation.rounds.map((r) => r.stage).filter(Boolean))].join(" → ");
   const suggestions = report.explanation.suggestions ?? [];
 
   return (
     <div className="border border-[var(--line)] bg-white p-5">
       <p className="text-[28px] font-semibold tracking-tight">{punchline(inTarget, outTarget, reachPct)}</p>
       <p className="mt-2 max-w-3xl text-[13px] leading-5 text-[var(--muted)]">{report.explanation.summary}</p>
-      <div className="mt-5 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-5">
-        <Metric label="Total reach" value={`${Math.round(reachPct)}%`} note={`${shown.length} of ${people.length} agents`} />
+      <div className="mt-5 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-6">
+        <Metric label="Audience fit" value={`${Math.round(report.audience_fit ?? 0)}`} note="pack affinity" />
+        <Metric label="Distribution" value={`${Math.round(report.distribution_potential ?? 0)}`} note="cascade depth vs cap" />
+        <Metric label="Engagement quality" value={`${Math.round(report.engagement_quality ?? 0)}`} note="reply / repost / quote / share / follow" />
+        <Metric label="Negative risk" value={`${Math.round(report.negative_signal_risk ?? 0)}`} note="mute / not-interested" />
+        <Metric label="Niche Index" value={`${Math.round(report.niche_index ?? 0)}`} note="core-pack affinity" />
+        <Metric label="Profile impact" value={`${Math.round(report.profile_impact ?? 50)}`} note="vs bland pack post" />
+      </div>
+      <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-5">
+        <Metric
+          label="Simulated exposure"
+          value={`${Math.round(reachPct)}%`}
+          note={`${shown.length} of ${people.length} simulated agents${
+            report.simulation.exposure_p10 != null
+              ? ` · MC p10–p90 ${Math.round(report.simulation.exposure_p10)}–${Math.round(report.simulation.exposure_p90)}%`
+              : ""
+          }`}
+        />
         <div className="border-t border-[var(--line)] p-3 sm:border-t-0 sm:border-l">
           <p className="lab-label">% of target</p>
           <p className="mt-1 text-[22px] font-semibold">{ofTarget}/100</p>
@@ -374,25 +444,28 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
         <Metric
           label="Cascade depth"
           value={`${depth} rounds`}
-          note={last?.stop_reason || (last?.stopped ? "velocity-gated" : "ran to cap")}
+          note={report.stop_reason || last?.stop_reason || (last?.stopped ? "velocity-gated" : "ran to cap")}
         />
         <div className="border-t border-[var(--line)] p-3 lg:border-t-0 lg:border-l">
-          <p className="lab-label">Summary</p>
-          <p className="mt-2 text-[14px] font-semibold leading-5">{tag}</p>
+          <p className="lab-label">Stages</p>
+          <p className="mt-2 text-[14px] font-semibold leading-5">{stages || tag}</p>
         </div>
       </div>
       <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-5">
-        <Metric label="p10" value={report.simulation.score_p10.toFixed(0)} note="low-end impact" />
-        <Metric label="p50" value={report.simulation.score_p50.toFixed(0)} note="median impact" />
-        <Metric label="p90" value={report.simulation.score_p90.toFixed(0)} note="high-end impact" />
-        <Metric label="Niche Index" value={`${Math.round(report.niche_index ?? 0)}`} note="core-pack affinity" />
-        <Metric label="Audience fit" value={`${Math.round(report.audience_fit ?? 0)}`} note="all-pack affinity" />
-      </div>
-      <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-3">
-        <Metric label="Negative risk" value={`${Math.round(report.negative_signal_risk ?? 0)}`} note="mute / not-interested" />
-        <Metric label="Confidence" value={`${Math.round(report.confidence ?? 0)}`} note="tighter p10–p90 = higher" />
-        <div className="border-t border-[var(--line)] p-3 sm:border-t-0 sm:border-l">
-          <p className="lab-label">Calibration</p>
+        <Metric label="p10" value={report.simulation.score_p10.toFixed(0)} note="cascade score, low" />
+        <Metric label="p50" value={report.simulation.score_p50.toFixed(0)} note="median cascade" />
+        <Metric label="p90" value={report.simulation.score_p90.toFixed(0)} note="cascade score, high" />
+        <Metric
+          label="Stability"
+          value={`${Math.round(report.stability ?? report.confidence ?? 0)}`}
+          note="tighter p10–p90"
+        />
+        <div className="border-t border-[var(--line)] p-3 sm:border-t-0 sm:border-l lg:border-t-0">
+          <p className="lab-label">Model path</p>
+          <p className="mt-2 text-[12px] leading-5 text-[var(--muted)]">
+            {(report.inference_path || (report.groq_used ? "groq" : "heuristic")).toUpperCase()}
+            {report.calibration_version ? ` · ${report.calibration_version}` : ""}
+          </p>
           <p className="mt-2 text-[12px] leading-5 text-[var(--muted)]">{report.heads_note || "No trained heads applied."}</p>
         </div>
       </div>
@@ -408,16 +481,132 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
       )}
       {compare && (
         <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-3">
-          <Metric label="Hook A" value={compare.a.impact_score.toFixed(0)} note={`niche ${Math.round(compare.a.niche_index ?? 0)} · reach ${Math.round(compare.a.reach_pct ?? 0)}%`} />
-          <Metric label="Hook B" value={compare.b.impact_score.toFixed(0)} note={`niche ${Math.round(compare.b.niche_index ?? 0)} · reach ${Math.round(compare.b.reach_pct ?? 0)}%`} />
+          <Metric label="Hook A" value={compare.a.impact_score.toFixed(0)} note={`niche ${Math.round(compare.a.niche_index ?? 0)} · exposure ${Math.round(compare.a.reach_pct ?? 0)}%`} />
+          <Metric label="Hook B" value={compare.b.impact_score.toFixed(0)} note={`niche ${Math.round(compare.b.niche_index ?? 0)} · exposure ${Math.round(compare.b.reach_pct ?? 0)}%`} />
           <Metric
             label="B − A"
             value={signed(compare.delta.impact_score)}
-            note={`niche ${signed(compare.delta.niche_index)} · fit ${signed(compare.delta.audience_fit)} · reach ${signed(compare.delta.reach_pct)}`}
+            note={`niche ${signed(compare.delta.niche_index)} · fit ${signed(compare.delta.audience_fit)} · dist ${signed(compare.delta.distribution_potential ?? 0)}`}
           />
         </div>
       )}
     </div>
+  );
+}
+
+function OutcomePanel({ runId }: { runId: string }) {
+  const [impressions, setImpressions] = useState("");
+  const [likes, setLikes] = useState("");
+  const [replies, setReplies] = useState("");
+  const [reposts, setReposts] = useState("");
+  const [follows, setFollows] = useState("");
+  const [note, setNote] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fill = (record: OutcomeRecord) => {
+      setImpressions(record.impressions != null ? String(record.impressions) : "");
+      setLikes(record.likes != null ? String(record.likes) : "");
+      setReplies(record.replies != null ? String(record.replies) : "");
+      setReposts(record.reposts != null ? String(record.reposts) : "");
+      setFollows(record.follows != null ? String(record.follows) : "");
+      setNote(record.note ?? "");
+    };
+    fetch(`${API}/api/simulations/${encodeURIComponent(runId)}/outcome`)
+      .then(async (response) => {
+        if (!response.ok || cancelled) return;
+        fill((await response.json()) as OutcomeRecord);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [runId]);
+
+  const parse = (raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    const n = Number(trimmed);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const onSave = async () => {
+    setSaving(true);
+    setStatus(null);
+    try {
+      const payload: OutcomeRecord = {
+        run_id: runId,
+        impressions: parse(impressions),
+        likes: parse(likes),
+        replies: parse(replies),
+        reposts: parse(reposts),
+        follows: parse(follows),
+        note,
+      };
+      await apiFetch(`${API}/api/simulations/${encodeURIComponent(runId)}/outcome`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setStatus("Saved against this run id.");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="border border-[var(--line)] bg-white p-4">
+      <div className="grid gap-3 sm:grid-cols-5">
+        <OutcomeField label="Impressions" value={impressions} onChange={setImpressions} />
+        <OutcomeField label="Likes" value={likes} onChange={setLikes} />
+        <OutcomeField label="Replies" value={replies} onChange={setReplies} />
+        <OutcomeField label="Reposts" value={reposts} onChange={setReposts} />
+        <OutcomeField label="Follows" value={follows} onChange={setFollows} />
+      </div>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Optional note"
+        className="mt-3 w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none placeholder:text-[var(--muted)]"
+      />
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          className="border border-[var(--line)] px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] disabled:opacity-40"
+        >
+          {saving ? "SAVING..." : "SAVE OUTCOME"}
+        </button>
+        {status ? <p className="text-[12px] text-[var(--muted)]">{status}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function OutcomeField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="lab-label">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        inputMode="numeric"
+        className="mt-1 w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none"
+      />
+    </label>
   );
 }
 

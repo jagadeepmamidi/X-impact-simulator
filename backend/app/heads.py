@@ -8,11 +8,11 @@ from app.schemas import PersonaReaction
 from app.scoring import clamp01
 
 HEADS_NOTE = (
-    "BluePrint heads blend favorite (75%) and retweet (35%) only. "
+    "BluePrint heads blend favorite (40%) and retweet (25%) only. "
     "Reply, follow, and negative heads are unused (eval AP too low or unlabeled). Uncalibrated."
 )
-FAVORITE_BLEND = 0.75
-RETWEET_BLEND = 0.35
+FAVORITE_BLEND = 0.40
+RETWEET_BLEND = 0.25
 MIN_CHARS = 12
 
 

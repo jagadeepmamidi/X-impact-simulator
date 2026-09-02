@@ -45,11 +45,12 @@ Single-message threads are skipped. Labels: favorite, reply, retweet, quote, fol
 ```python
 from train_heads import train
 from pathlib import Path
-report = train(Path("/content/blueprint_phoenix.jsonl"), Path("/content/artifacts"))
+report = train(Path("/content/blueprint_phoenix.jsonl"), Path("/content/artifacts"), split="shuffle")
+print(report["beats_majority_ap"])
 print(report)
 ```
 
-Download `/content/artifacts/phoenix_heads.joblib` + `train_report.json` back to `training/artifacts/`.
+Default split is shuffled 90/10 (pass `split="sequential"` only to reproduce the old cut). Download `phoenix_heads.joblib`, `train_report.json`, and `model_card.json` to `training/artifacts/`. Do not ship heads that lose to the majority-class AP baseline.
 
 ## Cell 6 — Nemotron persona packs (CC BY 4.0)
 

@@ -52,5 +52,15 @@ Weights multiply **predicted probabilities**, not counts.
 - `MultiplierPreOffset` = `false` so OON applies after offset
 - `PostUnexploredWeightInNetworkOnly` = `true`
 
-UI 0-100 is `clamp(raw / 6) * 100`, a display mapping, not an X production percentile.
+UI 0-100 is a documented sigmoid of the *calibrated* raw ranking score (`impression-priors-v1`), not `raw / 6` and not an X production percentile. Monte Carlo p10/p50/p90 are the **final-round scores of complete cascade runs**, not round-1 pack scores.
+
+## Impression-level calibration (`impression-priors-v1`)
+
+RankingScorer weights multiply **P(action | impression)**. LLM and heuristic heads in this app are 0-1 *affinities*. Before scoring, Python maps each affinity `a` onto an assumed base rate `p0`:
+
+`P = sigmoid(logit(p0) + 2.2 * (2a - 1))`
+
+`p0` values are research priors, **not X telemetry**. Graph sampling still uses the uncalibrated affinities so a 40-agent toy cascade remains visible. Scoring never jitters calibrated rates (σ=0.05 would swamp `P(report)` and collapse the score).
+
+Simulation knobs live in `SimulationConfig` (`sim-config-v1`): share fanout, 8% algo exposure, 42 UI-point algo quality floor, 10% velocity stop.
 

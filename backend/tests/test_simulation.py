@@ -1,3 +1,4 @@
+from app.calibration import calibrate_reactions
 from app.schemas import PersonaReaction
 from app.scoring import OON_WEIGHT_FACTOR, audience_score, ranking_score
 from app.simulation import heuristic_reactions, load_overlays, load_pack, simulate
@@ -80,7 +81,7 @@ def test_report_uses_negative_offset_path() -> None:
 
 def test_spread_graph_blobs_and_edges() -> None:
     pack = load_pack("tech")
-    reactions = heuristic_reactions(
+    affinities = heuristic_reactions(
         pack,
         {
             "topics": ["AI tools"],
@@ -92,6 +93,7 @@ def test_spread_graph_blobs_and_edges() -> None:
             "visual_hook": 0.0,
         },
     )
+    reactions = calibrate_reactions(affinities)
     sim = simulate(
         reactions,
         seed=11,
@@ -104,6 +106,7 @@ def test_spread_graph_blobs_and_edges() -> None:
         target_text="Software engineers, AI tools, tutorials",
         topics=["AI tools"],
         overlays=load_overlays("tech"),
+        sample_reactions=affinities,
     )
     people = [a for a in sim.graph.agents if a.cohort != "origin"]
     shown = [a for a in people if a.cohort != "never_shown"]
