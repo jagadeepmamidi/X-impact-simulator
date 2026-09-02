@@ -33,9 +33,21 @@ def test_scorecard_bounds() -> None:
         sample_reactions=affinities,
     )
     card = scorecard(reactions, pack, ContentFeatures(topics=["AI tools"]), sim)
-    for key in ("audience_fit", "niche_index", "negative_signal_risk", "stability", "confidence", "reach_pct"):
+    for key in (
+        "audience_fit",
+        "niche_index",
+        "negative_signal_risk",
+        "stability",
+        "confidence",
+        "reach_pct",
+        "distribution_potential",
+        "engagement_quality",
+        "profile_impact",
+    ):
         assert 0 <= card[key] <= 100
     assert card["stability"] == card["confidence"]
+    assert isinstance(card["stop_reason"], str)
+    assert card["stop_reason"]
 
 
 def test_store_roundtrip() -> None:

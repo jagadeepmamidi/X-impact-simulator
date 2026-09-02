@@ -37,6 +37,7 @@ export type RoundResult = {
   score: number;
   stopped: boolean;
   stop_reason: string | null;
+  stage?: string;
 };
 
 export type SpreadAction =
@@ -132,6 +133,27 @@ export type ImpactReport = {
   inference_path?: string;
   simulator_version?: string;
   calibration_version?: string;
+  config_version?: string;
+  prompt_version?: string;
+  input_text?: string;
+  population?: number;
+  boost?: number;
+  llm_model?: string;
+  parent_run_id?: string | null;
+  distribution_potential?: number;
+  engagement_quality?: number;
+  profile_impact?: number;
+  stop_reason?: string;
+};
+
+export type OutcomeRecord = {
+  run_id: string;
+  impressions?: number | null;
+  likes?: number | null;
+  replies?: number | null;
+  reposts?: number | null;
+  follows?: number | null;
+  note?: string;
 };
 
 export type CompareReport = {
@@ -143,5 +165,8 @@ export type CompareReport = {
     audience_fit: number;
     reach_pct: number;
     confidence: number;
+    distribution_potential?: number;
+    engagement_quality?: number;
+    profile_impact?: number;
   };
 };

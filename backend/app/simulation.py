@@ -276,6 +276,7 @@ def _round_result(
     score: float,
     stopped: bool,
     reason: str | None,
+    stage: str = "seed",
 ) -> RoundResult:
     counts = _counts(fresh)
     return RoundResult(
@@ -292,7 +293,28 @@ def _round_result(
         score=score,
         stopped=stopped,
         stop_reason=reason,
+        stage=stage,
     )
+
+
+def _stage_for_round(n: int) -> str:
+    if n <= 1:
+        return "seed"
+    if n == 2:
+        return "adjacent"
+    if n == 3:
+        return "niche"
+    return "general"
+
+
+def _stage_in_pref(stage: str, cfg: SimulationConfig) -> float:
+    if stage == "adjacent":
+        return cfg.adjacent_in_pref
+    if stage == "niche":
+        return cfg.niche_in_pref
+    if stage == "general":
+        return cfg.general_in_pref
+    return cfg.share_target_preference
 
 
 def graph_run(
@@ -455,6 +477,7 @@ def graph_run(
             score,
             False,
             None,
+            "seed",
         )
     )
 
@@ -462,13 +485,15 @@ def graph_run(
     for n in range(2, max_rounds + 1):
         if not in_q and not out_q:
             break
+        stage = _stage_for_round(n)
         prior = len(shown)
         fresh = []
         sharers = [i for i in shown if slots[i]["action"] in SHARE_ACTIONS]
+        share_pref = _stage_in_pref(stage, cfg)
         for src in sharers:
             fanout = int(rng.integers(cfg.share_fanout_min, cfg.share_fanout_max + 1))
             for _ in range(fanout):
-                idx = take(prefer_in=bool(rng.random() < cfg.share_target_preference))
+                idx = take(prefer_in=bool(rng.random() < share_pref))
                 if idx is None:
                     break
                 reveal(idx, n, slots[src]["id"], "share", oon=not slots[idx]["in_target"])
@@ -479,8 +504,9 @@ def graph_run(
         if prev_score < cfg.algo_quality_floor:
             algo_n = 0
         parents = shown[:] or [0]
+        algo_pref = _stage_in_pref(stage, cfg)
         for _ in range(algo_n):
-            idx = take(prefer_in=bool(rng.random() < cfg.algo_target_preference))
+            idx = take(prefer_in=bool(rng.random() < algo_pref))
             if idx is None:
                 break
             parent = slots[int(rng.choice(parents))]
@@ -489,12 +515,15 @@ def graph_run(
         score = audience_score([slots[i]["reaction"] for i in shown], in_network=False) if shown else 0.0
         new = len(shown) - prior
         velocity = new / max(1, prior)
-        stopped = velocity < cfg.velocity_stop_threshold and n >= cfg.velocity_stop_min_round
-        reason = (
-            f"stalled at round {n} — velocity < {cfg.velocity_stop_threshold:.0%}."
-            if stopped
-            else None
-        )
+        neg_frac = sum(1 for i in shown if slots[i]["action"] == "negative") / max(1, len(shown))
+        stopped = False
+        reason = None
+        if neg_frac >= cfg.negative_stop_rate and n >= 2:
+            stopped = True
+            reason = f"negative-signal stop at round {n}."
+        elif velocity < cfg.velocity_stop_threshold and n >= cfg.velocity_stop_min_round:
+            stopped = True
+            reason = f"stalled at round {n} — velocity < {cfg.velocity_stop_threshold:.0%}."
         rounds.append(
             _round_result(
                 n,
@@ -503,6 +532,7 @@ def graph_run(
                 score,
                 stopped,
                 reason,
+                stage,
             )
         )
         if stopped:

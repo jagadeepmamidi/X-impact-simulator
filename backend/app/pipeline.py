@@ -26,6 +26,8 @@ from app.sim_config import (
 from app.simulation import heuristic_reactions, load_overlays, load_pack, simulate
 from app.store import save_report
 
+ALLOWED_POP = (40, 100, 320, 500)
+
 
 def _media_note(n_images: int, has_video: bool, transcribed: bool) -> str:
     if has_video:
@@ -122,7 +124,7 @@ def run_pipeline(
     affinities = reactions
     reactions = calibrate_reactions(affinities)
     used_seed = settings.sim_seed if seed is None else seed
-    n_pop = population if population in (40, 100, 320) else 100
+    n_pop = population if population in ALLOWED_POP else 100
     n_boost = max(1, min(12, boost))
     simulation = simulate(
         reactions,
@@ -139,7 +141,14 @@ def run_pipeline(
         sample_reactions=affinities,
     )
     impact = audience_score(reactions)
-    card = scorecard(reactions, personas, content, simulation)
+    card = scorecard(
+        reactions,
+        personas,
+        content,
+        simulation,
+        impact_score=impact,
+        max_rounds=settings.sim_max_rounds,
+    )
     slim = {
         "niche": niche,
         "impact_score": impact,
@@ -152,6 +161,7 @@ def run_pipeline(
     }
     explanation = groq_explain(slim) or template_explanation(impact, reactions)
     heads_note = HEADS_NOTE if heads_used else "No trained heads applied."
+    last_stop = str(card["stop_reason"])
     report = ImpactReport(
         experimental=True,
         disclaimer=DISCLAIMER,
@@ -165,17 +175,26 @@ def run_pipeline(
         weights_note=WEIGHTS_NOTE,
         heads_used=heads_used,
         heads_note=heads_note,
-        audience_fit=card["audience_fit"],
-        niche_index=card["niche_index"],
-        negative_signal_risk=card["negative_signal_risk"],
-        stability=card["stability"],
-        confidence=card["stability"],
-        reach_pct=card["reach_pct"],
+        audience_fit=float(card["audience_fit"]),
+        niche_index=float(card["niche_index"]),
+        negative_signal_risk=float(card["negative_signal_risk"]),
+        stability=float(card["stability"]),
+        confidence=float(card["stability"]),
+        reach_pct=float(card["reach_pct"]),
         inference_path=f"{inference_path}{'+heads' if heads_used else ''}+calibrated",
         simulator_version=SIMULATOR_VERSION,
         calibration_version=CALIBRATION_VERSION,
         config_version=CONFIG_VERSION,
         prompt_version=PROMPT_VERSION,
+        input_text=text,
+        population=n_pop,
+        boost=n_boost,
+        llm_model=settings.groq_text_model if inference_path == "groq" else "",
+        affinity_reactions=affinities,
+        distribution_potential=float(card["distribution_potential"]),
+        engagement_quality=float(card["engagement_quality"]),
+        profile_impact=float(card["profile_impact"]),
+        stop_reason=last_stop,
     )
     if persist:
         report = report.model_copy(update={"run_id": save_report(report)})
@@ -211,5 +230,69 @@ def compare_hooks(
             audience_fit=round(b.audience_fit - a.audience_fit, 1),
             reach_pct=round(b.reach_pct - a.reach_pct, 1),
             confidence=round(b.confidence - a.confidence, 1),
+            distribution_potential=round(b.distribution_potential - a.distribution_potential, 1),
+            engagement_quality=round(b.engagement_quality - a.engagement_quality, 1),
+            profile_impact=round(b.profile_impact - a.profile_impact, 1),
         ),
     )
+
+
+def replay_report(source: ImpactReport, seed: int | None = None, persist: bool = True) -> ImpactReport:
+    affinities = source.affinity_reactions
+    if not affinities:
+        raise ValueError("Run has no stored affinities")
+    personas = load_pack(source.niche)
+    overlays = load_overlays(source.niche)
+    reactions = calibrate_reactions(affinities)
+    used_seed = source.simulation.seed if seed is None else seed
+    n_pop = source.population if source.population in ALLOWED_POP else 100
+    n_boost = max(1, min(12, source.boost or 6))
+    simulation = simulate(
+        reactions,
+        seed=used_seed,
+        users_per_persona=max(1, n_pop // max(1, len(reactions))),
+        runs=settings.sim_monte_carlo_runs,
+        max_rounds=settings.sim_max_rounds,
+        personas=personas,
+        population=n_pop,
+        boost=n_boost,
+        target_text=source.input_text,
+        topics=list(source.content.topics),
+        overlays=overlays,
+        sample_reactions=affinities,
+    )
+    impact = audience_score(reactions)
+    card = scorecard(
+        reactions,
+        personas,
+        source.content,
+        simulation,
+        impact_score=impact,
+        max_rounds=settings.sim_max_rounds,
+    )
+    report = source.model_copy(
+        update={
+            "run_id": None,
+            "parent_run_id": source.run_id,
+            "reactions": reactions,
+            "simulation": simulation,
+            "impact_score": impact,
+            "audience_fit": float(card["audience_fit"]),
+            "niche_index": float(card["niche_index"]),
+            "negative_signal_risk": float(card["negative_signal_risk"]),
+            "stability": float(card["stability"]),
+            "confidence": float(card["stability"]),
+            "reach_pct": float(card["reach_pct"]),
+            "distribution_potential": float(card["distribution_potential"]),
+            "engagement_quality": float(card["engagement_quality"]),
+            "profile_impact": float(card["profile_impact"]),
+            "stop_reason": str(card["stop_reason"]),
+            "groq_used": False,
+            "inference_path": "replay+calibrated",
+            "llm_model": source.llm_model,
+            "affinity_reactions": affinities,
+        }
+    )
+    if persist:
+        report = report.model_copy(update={"run_id": save_report(report)})
+    return report

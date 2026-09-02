@@ -93,6 +93,7 @@ class RoundResult(BaseModel):
     score: float
     stopped: bool = False
     stop_reason: str | None = None
+    stage: str = "seed"
 
 
 Cohort = Literal["origin", "in_target", "out_of_target", "never_shown"]
@@ -174,6 +175,16 @@ class ImpactReport(BaseModel):
     calibration_version: str = ""
     config_version: str = ""
     prompt_version: str = ""
+    input_text: str = ""
+    population: int = 100
+    boost: int = 6
+    llm_model: str = ""
+    parent_run_id: str | None = None
+    affinity_reactions: list[PersonaReaction] = Field(default_factory=list)
+    distribution_potential: float = 0.0
+    engagement_quality: float = 0.0
+    profile_impact: float = 50.0
+    stop_reason: str = ""
 
 
 class CompareDelta(BaseModel):
@@ -182,6 +193,19 @@ class CompareDelta(BaseModel):
     audience_fit: float
     reach_pct: float
     confidence: float
+    distribution_potential: float = 0.0
+    engagement_quality: float = 0.0
+    profile_impact: float = 0.0
+
+
+class OutcomeRecord(BaseModel):
+    run_id: str
+    impressions: float | None = None
+    likes: float | None = None
+    replies: float | None = None
+    reposts: float | None = None
+    follows: float | None = None
+    note: str = ""
 
 
 class CompareReport(BaseModel):

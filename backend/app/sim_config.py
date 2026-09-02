@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, asdict
 
-SIMULATOR_VERSION = "0.2.0"
+SIMULATOR_VERSION = "0.3.0"
 CALIBRATION_VERSION = "impression-priors-v1"
-CONFIG_VERSION = "sim-config-v1"
+CONFIG_VERSION = "sim-config-v2"
 PROMPT_VERSION = "persona-reactions-v2"
 HEADS_VERSION = "blueprint-tfidf-favorite-retweet-v1"
 WEIGHTS_TREE = "7ba776848b12d8422eb0f291ee03ea5c17ab0188"
@@ -13,17 +13,21 @@ WEIGHTS_TREE = "7ba776848b12d8422eb0f291ee03ea5c17ab0188"
 @dataclass(frozen=True)
 class SimulationConfig:
     version: str = CONFIG_VERSION
-    max_population: int = 320
+    max_population: int = 500
     min_population: int = 8
     share_fanout_min: int = 1
     share_fanout_max: int = 3
     out_of_target_seed_frac: float = 0.35
     share_target_preference: float = 0.45
     algo_target_preference: float = 0.25
+    adjacent_in_pref: float = 0.25
+    niche_in_pref: float = 0.70
+    general_in_pref: float = 0.40
     algo_exposure_rate: float = 0.08
     algo_quality_floor: float = 42.0
     velocity_stop_threshold: float = 0.10
     velocity_stop_min_round: int = 3
+    negative_stop_rate: float = 0.18
     jitter_sigma: float = 0.05
     dwell_jitter_sigma: float = 0.4
     action_noise_sigma: float = 0.25
