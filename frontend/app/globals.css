@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f6f6f4;
+  --fg: #111111;
+  --muted: #8a8a8a;
+  --line: #111111;
+  --hairline: #111111;
+  --fill: #ececec;
+  --ink: #111111;
+  --blue: #3b82f6;
+  --blue-press: #2563eb;
+  --like: #f91880;
+  --repost: #00ba7c;
+  --share: #c23b3b;
+  --out: #f59a3d;
+  --danger: #c23b3b;
+  --run: #111111;
+  --background: #f6f6f4;
+  --foreground: #111111;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.lab-label {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+::selection {
+  background: #11111118;
+}
+
+:focus-visible {
+  outline: 1px solid var(--fg);
+  outline-offset: 2px;
+}
+
+input[type="range"] {
+  accent-color: #111;
+  height: 3px;
+}
+
+select,
+textarea,
+button,
+input:not([type="range"]) {
+  font: inherit;
+  border-radius: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+select {
+  background-image: linear-gradient(45deg, transparent 50%, #111 50%), linear-gradient(135deg, #111 50%, transparent 50%);
+  background-position: calc(100% - 14px) calc(50% - 3px), calc(100% - 9px) calc(50% - 3px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 1.5rem;
+}
+
+div,
+section,
+aside,
+header,
+footer {
+  border-radius: 0;
+}
+
+@keyframes spread-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bulb-pop {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.spread-in {
+  animation: spread-in 420ms ease-out;
+}
+
+.bulb-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bulb-pop 280ms ease-out both;
+}
+
+@keyframes edge-draw {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.edge-draw {
+  animation: edge-draw 320ms ease-out both;
+}

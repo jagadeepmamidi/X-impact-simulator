@@ -1,0 +1,24 @@
+# X Impact Simulator
+
+> Experimental X-inspired audience and distribution simulator. Not a virality predictor. Not X production. No live X feed.
+
+A creator submits a draft (text, up to 5 images, or a short video). Niche personas emit Phoenix-style P(action) JSON. Python scores with public RankingScorer weighted mode from xai-org/x-algorithm (param.rs sync 2026-09-01), then Monte Carlo rounds. Groq never emits impact_score.
+
+## Product
+
+- [App](/): Offline Impact Simulator UI
+- [API health](http://127.0.0.1:8000/api/health): FastAPI health (local)
+- [Scoring notes](/llms-full.txt): Ranking formula, weights, datasets
+
+## Docs in this repo
+
+- [README](https://github.com/jagadeepmamidi/X-impact-simulator#readme): Run locally (frontend :3000, backend :8000)
+- [Dataset register](research/dataset-register.md): BluePrint, Nemotron-Personas-USA, SCOPE (research-only)
+- [X scoring snapshot](research/x-scoring-notes.md): Public RankingScorer weights
+
+## Optional for crawlers
+
+- [robots.txt](/robots.txt)
+- [sitemap.xml](/sitemap.xml)
+- [ai.txt](/ai.txt)
+- [llms-full.txt](/llms-full.txt)

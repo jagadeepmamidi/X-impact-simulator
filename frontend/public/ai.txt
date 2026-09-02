@@ -1,0 +1,11 @@
+# AI crawler policy (https://site.spawning.ai/spawning-ai-txt)
+# This product is experimental documentation + a public UI. Training on user uploads is not allowed.
+
+User-Agent: *
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Disallow: /api/
+
+# Preferred machine-readable brief
+Llms-Txt: /llms.txt

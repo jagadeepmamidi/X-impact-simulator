@@ -1,0 +1,5 @@
+# X Impact Simulator
+
+> Experimental X-inspired audience and distribution simulator. Not a virality predictor. Not X production. No live X feed.
+
+See `frontend/public/llms.txt` for the web copy. Local UI: http://localhost:3000  API: http://127.0.0.1:8000/llms.txt

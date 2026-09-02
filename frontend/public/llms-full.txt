@@ -1,0 +1,26 @@
+# X Impact Simulator (full)
+
+> Experimental / uncalibrated. Uses the public X ranking *formula*, not Phoenix, not the live graph.
+
+## Scoring
+
+`score = offset(sum(w_i * P(action_i)))`, then out-of-network x 0.75.
+
+Pinned: xai-org/x-algorithm tree 7ba776848b12d8422eb0f291ee03ea5c17ab0188. param.rs last sync 2026-09-01T16:42:25Z. NEGATIVE_SCORES_OFFSET = 0.001. UI 0-100 is clamp(raw / 6) * 100.
+
+Labeled Phoenix heads from BluePrint: favorite, reply, retweet, quote, follow_author, block_author. Share, dwell, click, mute, report stay heuristic/Groq until labeled.
+
+## Datasets
+
+- ComplexDataLab/BluePrint (MIT, gated): next-action threads, config 25_clusters
+- nvidia/Nemotron-Personas-USA (CC BY 4.0): persona diversity; no sex/age/zip targeting
+- Salesforce/SCOPE-Persona (CC BY-NC): research only, not production training
+- No live For You / Thunder crawl
+
+## Stack
+
+Next.js :3000, FastAPI :8000, Groq optional (Qwen vision, Whisper, text JSON).
+
+## Contact / limits
+
+Do not treat scores as X production or a virality guarantee. Do not use this product to optimize harassment, manipulation, or platform abuse.
