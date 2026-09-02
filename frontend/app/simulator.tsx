@@ -426,7 +426,7 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
           label="Simulated exposure"
           value={`${Math.round(reachPct)}%`}
           note={`${shown.length} of ${people.length} simulated agents${
-            report.simulation.exposure_p10 != null
+            report.simulation.exposure_p10 != null && report.simulation.exposure_p90 != null
               ? ` · MC p10–p90 ${Math.round(report.simulation.exposure_p10)}–${Math.round(report.simulation.exposure_p90)}%`
               : ""
           }`}
