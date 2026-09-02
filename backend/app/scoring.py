@@ -40,8 +40,8 @@ WEIGHTS_NOTE = (
     "Score = RankingScorer weighted mode: sum(w_i * P(action_i)), then +0.001 "
     "offset, then OON x 0.75. Weights from xai-org/x-algorithm "
     "home-mixer/params/param.rs (sync 2026-09-01). Weights scale predicted "
-    "impression-level probabilities, not raw counts. Not Phoenix, not the live "
-    "graph, not production. " + CALIBRATION_NOTE
+    "probabilities, not raw counts. Not Phoenix, not the live graph, not production. "
+    + CALIBRATION_NOTE
 )
 
 DISCLAIMER = (

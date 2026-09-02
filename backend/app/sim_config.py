@@ -1,5 +1,3 @@
-"""Versioned simulation assumptions. These are research priors, not X production parameters."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
