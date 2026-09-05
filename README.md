@@ -89,7 +89,7 @@ Copy `.env.example`. Never commit `.env`.
 
 The checked-in Render blueprint specifies a **paid Starter service and persistent disk**, production mode, 30-day retention, and `SQLITE_PATH=/var/data/runs.sqlite`. Applying that blueprint can incur hosting charges; editing it locally does not deploy or purchase anything. Supply per-owner keys and the frontend origin during setup. Keep one service instance for this SQLite deployment and back up the database using SQLite's backup API; verify restore on a separate path before release. Existing deployments must explicitly migrate their current database before pointing at a new empty disk.
 
-For Vercel, keep the 4 MB request limit and configure a function duration longer than the chosen proxy timeout on a plan that supports it. Provider timeout/retry settings bound individual calls; stopping a browser request does not cancel those calls. Real provider latency, budgets, live media, backup/restore and hosted smoke checks remain deployment acceptance work.
+For Vercel, keep the 4 MB request limit; the proxy route requests a 120-second function duration to cover its default 90-second upstream timeout. Use a plan/settings that support that duration (or lower `API_PROXY_TIMEOUT_SECONDS` if Fluid Compute is disabled). Provider timeout/retry settings bound individual calls; stopping a browser request does not cancel those calls. Real provider latency, budgets, live media, backup/restore and hosted smoke checks remain deployment acceptance work.
 
 ## API
 
