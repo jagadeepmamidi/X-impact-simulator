@@ -2,16 +2,42 @@ services:
   - type: web
     name: x-impact-simulator-api
     runtime: python
-    plan: free
+    plan: starter
     region: oregon
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
+    disk:
+      name: x-impact-simulator-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
+      - key: APP_ENV
+        value: production
       - key: PYTHON_VERSION
         value: "3.11.9"
       - key: GROQ_API_KEY
         sync: false
+      - key: SIM_API_KEY
+        sync: false
+      - key: SIM_ACCESS_KEYS_JSON
+        sync: false
       - key: CORS_ORIGINS
         sync: false
+      - key: SQLITE_PATH
+        value: /var/data/runs.sqlite
+      - key: ALLOW_SQLITE_IN_PRODUCTION
+        value: "true"
+      - key: RUN_RETENTION_DAYS
+        value: "30"
+      - key: MAX_IMAGE_BYTES
+        value: "3500000"
+      - key: MAX_VIDEO_BYTES
+        value: "3500000"
+      - key: MAX_TOTAL_UPLOAD_BYTES
+        value: "3500000"
+      - key: MAX_REQUEST_BYTES
+        value: "4000000"
+      - key: SIM_MAX_CONCURRENT_RUNS
+        value: "2"

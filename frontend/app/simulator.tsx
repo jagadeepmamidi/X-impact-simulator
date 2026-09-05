@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { NICHES, NICHE_COPY, type CompareReport, type ImpactReport, type Niche, type OutcomeRecord } from "@/lib/types";
+import { NICHES, NICHE_COPY, type CompareReport, type ImpactReport, type Niche, type OutcomeRecord, type RecentRun } from "@/lib/types";
 import { GITHUB_REPO } from "@/lib/repo";
 import { SpreadView } from "./spread";
 import Link from "next/link";
@@ -9,6 +9,15 @@ import Link from "next/link";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 const DEV_API_TOKEN = process.env.NODE_ENV === "production" ? "" : (process.env.NEXT_PUBLIC_SIM_DEV_TOKEN ?? "");
 const ACCESS_KEY_STORAGE = "x-impact-simulator-access-key";
+const MAX_MEDIA_BYTES = 3_500_000;
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
+
+class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
 
 function apiHeaders(init?: HeadersInit) {
   const headers = new Headers(init);
@@ -22,12 +31,12 @@ function apiHeaders(init?: HeadersInit) {
 
 async function apiFetch(url: string, init?: RequestInit) {
   const response = await fetch(url, { ...init, headers: apiHeaders(init?.headers) });
-  if (response.status === 401) throw new Error("API access token required or invalid");
-  if (response.status === 429) throw new Error("Too many runs. Wait and try again.");
+  if (response.status === 401) throw new ApiError("API access token required or invalid", 401);
+  if (response.status === 429) throw new ApiError("Too many requests. Wait and try again.", 429);
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
     const message = typeof detail.detail === "string" ? detail.detail : `Request failed (${response.status})`;
-    throw new Error(message);
+    throw new ApiError(message, response.status);
   }
   return response;
 }
@@ -49,10 +58,26 @@ export function Simulator() {
   const [population, setPopulation] = useState("40");
   const [boost, setBoost] = useState(6);
   const [loading, setLoading] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState("Working…");
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<ImpactReport | null>(null);
   const [compare, setCompare] = useState<CompareReport | null>(null);
   const mediaInput = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const [apiKey, setApiKey] = useState(() => typeof window === "undefined" ? "" : sessionStorage.getItem(ACCESS_KEY_STORAGE) ?? "");
+  const [keyInput, setKeyInput] = useState("");
+  const [recentRuns, setRecentRuns] = useState<RecentRun[]>([]);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch(`${API}/api/simulations?limit=20`)
+      .then((response) => response.json() as Promise<{ runs?: RecentRun[] }>)
+      .then((payload) => { if (!cancelled) { setRecentRuns(payload.runs ?? []); setHistoryError(null); } })
+      .catch((err) => { if (!cancelled) { setRecentRuns([]); setHistoryError(err instanceof Error ? err.message : "Could not load recent runs"); } });
+    return () => { cancelled = true; };
+  }, [apiKey, report?.run_id, historyVersion]);
 
   const mediaLabel = video?.name
     ?? (images.length > 1 ? `${images.length} images selected` : images[0]?.name)
@@ -66,15 +91,31 @@ export function Simulator() {
 
   const onFiles = (list: FileList | File[]) => {
     const files = [...list];
-    const vid = files.find((f) => f.type.startsWith("video/"));
-    const pics = files.filter((f) => f.type.startsWith("image/")).slice(0, 5);
+    if (files.some((file) => !IMAGE_TYPES.has(file.type) && !VIDEO_TYPES.has(file.type))) {
+      clearMedia();
+      setError("Choose JPEG, PNG, WebP, GIF, MP4, WebM or MOV files.");
+      return;
+    }
+    if (files.reduce((sum, file) => sum + file.size, 0) > MAX_MEDIA_BYTES) {
+      clearMedia();
+      setError("Keep total media at or below 3.5 MB for this pilot.");
+      return;
+    }
+    const vid = files.find((f) => VIDEO_TYPES.has(f.type));
+    const pics = files.filter((f) => IMAGE_TYPES.has(f.type));
     if (vid) {
+      if (files.length !== 1) { clearMedia(); setError("Choose one video or up to five images."); return; }
       setVideo(vid);
       setImages([]);
       setError(null);
       return;
     }
     if (pics.length) {
+      if (pics.length > 5) {
+        clearMedia();
+        setError("Choose up to five images.");
+        return;
+      }
       setImages(pics);
       setVideo(null);
       setError(null);
@@ -86,7 +127,16 @@ export function Simulator() {
 
   const onSubmit = async (event?: FormEvent) => {
     event?.preventDefault();
+    if (loading) return;
+    if ((!text.trim() && !images.length && !video) || (textB.trim() && !text.trim())) {
+      setError("Enter Hook A to compare captions, or provide text or media for a single run.");
+      return;
+    }
+    if (text.length > 10000 || textB.length > 10000) { setError("Captions must be 10,000 characters or fewer."); return; }
+    const mediaBytes = images.reduce((sum, file) => sum + file.size, 0) + (video?.size ?? 0);
+    if (mediaBytes > MAX_MEDIA_BYTES) { setError("Keep total media at or below 3.5 MB for this pilot."); return; }
     setLoading(true);
+    setLoadingLabel(textB.trim() ? "Comparing hooks…" : "Running simulation…");
     setError(null);
     setCompare(null);
     setReport(null);
@@ -104,20 +154,24 @@ export function Simulator() {
       body.append("text", text);
     }
     try {
-      const response = await apiFetch(`${API}${comparing ? "/api/compare" : "/api/simulate"}`, { method: "POST", body });
+      abortRef.current = new AbortController();
+      const response = await apiFetch(`${API}${comparing ? "/api/compare" : "/api/simulate"}`, { method: "POST", body, signal: abortRef.current.signal });
       if (comparing) {
         const result = (await response.json()) as CompareReport;
+        if (abortRef.current?.signal.aborted) return;
         setCompare(result);
         setReport(result.a);
         if (result.a.run_id) setLoadId(result.a.run_id);
       } else {
         const loaded = (await response.json()) as ImpactReport;
+        if (abortRef.current?.signal.aborted) return;
         setReport(loaded);
         if (loaded.run_id) setLoadId(loaded.run_id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Simulation failed");
+      setError(err instanceof DOMException && err.name === "AbortError" ? "Stopped waiting. The server may still finish this run; refresh Recent runs to check." : err instanceof Error ? err.message : "Simulation failed");
     } finally {
+      abortRef.current = null;
       setLoading(false);
     }
   };
@@ -126,19 +180,25 @@ export function Simulator() {
     const id = loadId.trim();
     if (!id) return;
     setLoading(true);
+    setLoadingLabel("Loading saved run…");
     setError(null);
     setCompare(null);
+    abortRef.current = new AbortController();
     try {
-      const response = await apiFetch(`${API}/api/simulations/${encodeURIComponent(id)}`);
+      const response = await apiFetch(`${API}/api/simulations/${encodeURIComponent(id)}`, { signal: abortRef.current.signal });
       const loaded = (await response.json()) as ImpactReport;
+      if (abortRef.current?.signal.aborted) return;
       setReport(loaded);
       setNiche(loaded.niche);
       setText(loaded.input_text ?? "");
       setTextB("");
+      setPopulation(String(loaded.population ?? 100));
+      setBoost(loaded.boost ?? 6);
       clearMedia();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Load failed");
+      setError(err instanceof DOMException && err.name === "AbortError" ? "Stopped waiting. The server may still finish this request." : err instanceof Error ? err.message : "Load failed");
     } finally {
+      abortRef.current = null;
       setLoading(false);
     }
   };
@@ -147,48 +207,49 @@ export function Simulator() {
     const id = loadId.trim();
     if (!id) return;
     setLoading(true);
+    setLoadingLabel("Re-running stored snapshot…");
     setError(null);
     setCompare(null);
+    abortRef.current = new AbortController();
     try {
-      const response = await apiFetch(`${API}/api/simulations/${encodeURIComponent(id)}/replay`, { method: "POST" });
+      const response = await apiFetch(`${API}/api/simulations/${encodeURIComponent(id)}/replay`, { method: "POST", signal: abortRef.current.signal });
       const loaded = (await response.json()) as ImpactReport;
+      if (abortRef.current?.signal.aborted) return;
       setReport(loaded);
       setNiche(loaded.niche);
       setText(loaded.input_text ?? "");
       setTextB("");
+      setPopulation(String(loaded.population ?? 100));
+      setBoost(loaded.boost ?? 6);
       clearMedia();
       if (loaded.run_id) setLoadId(loaded.run_id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Replay failed");
+      setError(err instanceof DOMException && err.name === "AbortError" ? "Stopped waiting. The server may still finish this request." : err instanceof Error ? err.message : "Replay failed");
     } finally {
+      abortRef.current = null;
       setLoading(false);
     }
   };
+
+  const stopWaiting = () => abortRef.current?.abort();
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-[1180px] flex-1 flex-col px-8 py-6">
       <header className="flex items-end justify-between border-b border-[var(--line)] pb-4">
         <div className="flex items-baseline gap-3">
           <h1 className="text-[24px] font-semibold tracking-tight">Impact Simulator</h1>
-          <span className="text-[15px] text-[var(--muted)]">Run report</span>
+          <span className="hidden text-[15px] text-[var(--muted)] sm:inline">Run report</span>
         </div>
         <Link href="/readme" className="text-[13px] text-[var(--muted)] hover:text-[var(--fg)]">About</Link>
       </header>
 
       <form onSubmit={onSubmit} className="flex flex-1 flex-col">
-        <Section index="01" title="Input" aside="Drop video or images, pick a target demographic, run">
+        <Section index="01" title="Input" aside="Write a draft, choose a niche, and compare its simulated response">
           <div className="border border-[var(--line)] bg-white">
-            <div className="grid gap-0 md:grid-cols-[2.05fr_0.62fr_0.55fr_8.75rem]">
-              <DropCell
-                label="Video or images"
-                filename={mediaLabel}
-                filled={Boolean(video || images.length)}
-                onClick={() => mediaInput.current?.click()}
-                onDropFiles={onFiles}
-                onClear={clearMedia}
-              />
-              <Cell label="Target demographic">
+            <div className="grid gap-0 md:grid-cols-[2.2fr_1.1fr_1fr]">
+               <Cell label="Draft and niche">
                 <select
+                  aria-label="Niche"
                   value={niche}
                   onChange={(e) => setNiche(e.target.value as Niche)}
                   className="mb-2 w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none"
@@ -197,23 +258,39 @@ export function Simulator() {
                     <option key={item} value={item}>{NICHE_LABEL[item]}</option>
                   ))}
                 </select>
-                <input
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="Hook A — caption to score"
-                  className="w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none placeholder:text-[var(--muted)]"
-                />
-                <input
-                  value={textB}
-                  onChange={(e) => setTextB(e.target.value)}
-                  placeholder="Hook B — optional second caption"
-                  className="mt-2 w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none placeholder:text-[var(--muted)]"
-                />
+                 <label className="block text-[12px]">Hook A
+                   <textarea
+                   value={text}
+                   onChange={(e) => setText(e.target.value)}
+                   placeholder="Hook A — caption to score"
+                   maxLength={10000}
+                   rows={4}
+                   className="mt-1 w-full resize-y rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none placeholder:text-[var(--muted)]"
+                   aria-label="Hook A caption"
+                 /></label>
+                 <label className="mt-2 block text-[12px]">Hook B (optional)<textarea
+                   value={textB}
+                   onChange={(e) => setTextB(e.target.value)}
+                   placeholder="Hook B — optional second caption"
+                   maxLength={10000}
+                   rows={3}
+                   className="mt-2 w-full resize-y rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none placeholder:text-[var(--muted)]"
+                   aria-label="Hook B optional caption"
+                 /></label>
                 <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">{NICHE_COPY[niche]}</p>
               </Cell>
+              <DropCell
+                label="Optional media"
+                filename={mediaLabel}
+                filled={Boolean(video || images.length)}
+                onClick={() => mediaInput.current?.click()}
+                onDropFiles={onFiles}
+                onClear={clearMedia}
+              />
             <Cell label="Population">
-              <select
-                id="population"
+                <select
+                  id="population"
+                  aria-label="Population"
                 value={population}
                 onChange={(e) => setPopulation(e.target.value)}
                 className="w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none"
@@ -236,25 +313,16 @@ export function Simulator() {
               />
               <p className="text-[11px] text-[var(--muted)]">{boost} seeds · round-1 initial reach</p>
             </Cell>
-            <button
-              id="run-sim"
-              type="submit"
-              disabled={loading}
-              className="flex min-h-[9.5rem] items-center justify-center rounded-none bg-[var(--run)] text-[13px] font-semibold tracking-[0.28em] text-white disabled:cursor-not-allowed disabled:opacity-50 md:min-h-full md:border-l md:border-[var(--line)]"
-              style={{ writingMode: "vertical-rl" }}
-            >
-              {loading ? "RUNNING..." : textB.trim() ? "COMPARE" : "RUN"}
-            </button>
           </div>
           <button
             type="submit"
             disabled={loading}
             className="w-full border-t border-[var(--line)] bg-[var(--run)] py-3 text-[13px] font-semibold tracking-[0.28em] text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "RUNNING..." : textB.trim() ? "COMPARE HOOKS" : "RUN SIMULATION"}
+            {loading ? loadingLabel : textB.trim() ? "COMPARE HOOKS" : "RUN SIMULATION"}
           </button>
           {error && (
-            <p className="border-t border-[var(--hairline)] px-3 py-2 text-[15px] text-[var(--danger)]">{error}</p>
+            <p role="alert" className="border-t border-[var(--hairline)] px-3 py-2 text-[15px] text-[var(--danger)]">{error}</p>
           )}
           </div>
           <input
@@ -273,16 +341,17 @@ export function Simulator() {
         <Section index="02" title="Spread" aside="Simulated agents — red solid = shared directly — grey dashed = shown by ranking policy">
           {compare ? (
             <div className="grid gap-4">
-              <SpreadResult label="Hook A" report={compare.a} population={Number(population)} />
-              <SpreadResult label="Hook B" report={compare.b} population={Number(population)} />
+              <SpreadResult label="Hook A" report={compare.a} population={compare.a.population ?? Number(population)} />
+              <SpreadResult label="Hook B" report={compare.b} population={compare.b.population ?? Number(population)} />
             </div>
           ) : (
             <SpreadView
               report={report}
               loading={loading}
-              population={Number(population)}
+              population={report?.population ?? Number(population)}
             />
           )}
+          {loading ? <button type="button" onClick={stopWaiting} className="border-t border-[var(--hairline)] px-3 py-2 text-left text-[12px] underline">Stop waiting (server run may continue)</button> : null}
         </Section>
 
         <Section index="03" title="Verdict" aside="Comparative, not predictive">
@@ -292,24 +361,21 @@ export function Simulator() {
 
       {report?.run_id ? (
         <Section index="04" title="Outcome" aside="Optional observed numbers for a future calibration dataset — not scored or calibrated yet">
-          <OutcomePanel runId={report.run_id} />
+          <OutcomePanel key={report.run_id} runId={report.run_id} onSaved={() => setHistoryVersion((value) => value + 1)} />
         </Section>
       ) : null}
 
       <footer className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4 text-[12px] text-[var(--muted)]">
         <p>
-          {population}-agent simulated population · staged spread · velocity-gated{report?.run_id ? ` · ${report.run_id}` : ""}
+           {(report?.population ?? Number(population))}-agent simulated population · staged spread · velocity-gated{report?.run_id ? ` · ${report.run_id}` : ""}
           {report?.parent_run_id ? ` · replay of ${report.parent_run_id}` : ""}
           {" · "}
           <a href={GITHUB_REPO} className="text-[var(--fg)] hover:underline" target="_blank" rel="noreferrer">GitHub</a>
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <input
-            onChange={(event) => {
-              const value = event.target.value;
-              if (value) sessionStorage.setItem(ACCESS_KEY_STORAGE, value);
-              else sessionStorage.removeItem(ACCESS_KEY_STORAGE);
-            }}
+            value={keyInput}
+            onChange={(event) => setKeyInput(event.target.value)}
             type="password"
             spellCheck={false}
             autoComplete="off"
@@ -317,6 +383,13 @@ export function Simulator() {
             placeholder="API access key"
             className="w-36 rounded-none border border-[var(--line)] bg-white px-2 py-1 text-[12px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
           />
+          <button type="button" disabled={loading} className="border border-[var(--line)] px-2 py-1 disabled:opacity-40" onClick={() => {
+            const value = keyInput.trim();
+            if (value) sessionStorage.setItem(ACCESS_KEY_STORAGE, value);
+            else sessionStorage.removeItem(ACCESS_KEY_STORAGE);
+            setApiKey(value); setRecentRuns([]); setHistoryError(null); setLoadId(""); setReport(null); setCompare(null);
+            setHistoryVersion((version) => version + 1);
+          }}>USE KEY</button>
           <input
             value={loadId}
             onChange={(e) => setLoadId(e.target.value)}
@@ -330,6 +403,11 @@ export function Simulator() {
             placeholder="Run id"
             className="w-40 rounded-none border border-[var(--line)] bg-white px-2 py-1 text-[12px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
           />
+          <select aria-label="Recent runs" value={recentRuns.some((run) => run.run_id === loadId) ? loadId : ""} onChange={(e) => { if (e.target.value) setLoadId(e.target.value); }} className="w-64 max-w-full rounded-none border border-[var(--line)] bg-white px-2 py-1 text-[12px]">
+            <option value="">Recent runs</option>
+            {recentRuns.map((run) => <option key={run.run_id} value={run.run_id}>{new Date(run.created_at).toLocaleString()} · {run.niche} · {run.input_text.slice(0, 45) || "Media post"}{run.has_outcome ? " · outcome saved" : ""}</option>)}
+          </select>
+          <button type="button" className="border border-[var(--line)] px-2 py-1" onClick={() => setHistoryVersion((version) => version + 1)}>REFRESH RUNS</button>
           <button
             type="button"
             onClick={onLoad}
@@ -344,9 +422,10 @@ export function Simulator() {
             disabled={loading || !loadId.trim()}
             className="border border-[var(--line)] px-2 py-1 text-[11px] font-semibold tracking-[0.12em] text-[var(--fg)] disabled:opacity-40"
           >
-            REPLAY
+             RE-RUN SNAPSHOT
           </button>
         </div>
+        {historyError ? <p role="status" className="w-full">Recent runs: {historyError}</p> : null}
       </footer>
     </div>
   );
@@ -453,7 +532,7 @@ function DropCell({
       >
         <span className={filled ? "font-medium" : "text-[var(--muted)]"}>{filename}</span>
       </button>
-      <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">Videos and images run through the media pipeline on Run.</p>
+      <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">JPEG, PNG, WebP, GIF, MP4, WebM or MOV · one video or up to five images · total media under 3.5 MB.</p>
     </div>
   );
 }
@@ -707,42 +786,61 @@ function MetadataDetails({ label, value }: { label: string; value: Record<string
   );
 }
 
-function OutcomePanel({ runId }: { runId: string }) {
+function localDateTime(value: string) {
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+function OutcomePanel({ runId, onSaved }: { runId: string; onSaved: () => void }) {
   const [impressions, setImpressions] = useState("");
   const [likes, setLikes] = useState("");
   const [replies, setReplies] = useState("");
   const [reposts, setReposts] = useState("");
   const [follows, setFollows] = useState("");
+  const [quotes, setQuotes] = useState("");
+  const [shares, setShares] = useState("");
+  const [observedAt, setObservedAt] = useState("");
+  const [windowHours, setWindowHours] = useState("");
   const [note, setNote] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const existing = useRef<OutcomeRecord | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const fill = (record: OutcomeRecord) => {
+      existing.current = record;
       setImpressions(record.impressions != null ? String(record.impressions) : "");
       setLikes(record.likes != null ? String(record.likes) : "");
       setReplies(record.replies != null ? String(record.replies) : "");
       setReposts(record.reposts != null ? String(record.reposts) : "");
       setFollows(record.follows != null ? String(record.follows) : "");
+      setQuotes(record.quotes != null ? String(record.quotes) : "");
+      setShares(record.shares != null ? String(record.shares) : "");
+      setObservedAt(record.observed_at ? localDateTime(record.observed_at) : "");
+      setWindowHours(record.observation_window_hours != null ? String(record.observation_window_hours) : "");
       setNote(record.note ?? "");
     };
+    // A different run ID remounts this panel with empty fields and status.
     apiFetch(`${API}/api/simulations/${encodeURIComponent(runId)}/outcome`)
       .then(async (response) => {
-        if (!response.ok || cancelled) return;
-        fill((await response.json()) as OutcomeRecord);
+        const record = (await response.json()) as OutcomeRecord;
+        if (!cancelled) fill(record);
       })
-      .catch(() => undefined);
+      .catch((err) => { if (!cancelled) setStatus(err instanceof ApiError && err.status === 404 ? "No outcome recorded for this run yet." : err instanceof Error ? err.message : "Could not load outcome"); })
+      .finally(() => { if (!cancelled) setFetching(false); });
     return () => {
       cancelled = true;
     };
   }, [runId]);
 
-  const parse = (raw: string) => {
+  const parse = (raw: string, required = false) => {
     const trimmed = raw.trim();
-    if (!trimmed) return null;
+    if (!trimmed) return required ? undefined : null;
+    if (!/^\d+$/.test(trimmed)) return undefined;
     const n = Number(trimmed);
-    return Number.isFinite(n) ? n : null;
+    return Number.isSafeInteger(n) ? n : undefined;
   };
 
   const onSave = async () => {
@@ -750,20 +848,37 @@ function OutcomePanel({ runId }: { runId: string }) {
     setStatus(null);
     try {
       const payload: OutcomeRecord = {
+        ...existing.current,
         run_id: runId,
-        impressions: parse(impressions),
+        impressions: parse(impressions, true),
         likes: parse(likes),
         replies: parse(replies),
         reposts: parse(reposts),
         follows: parse(follows),
+        quotes: parse(quotes),
+        shares: parse(shares),
+        observed_at: observedAt
+          ? existing.current?.observed_at && localDateTime(existing.current.observed_at) === observedAt
+            ? existing.current.observed_at : new Date(observedAt).toISOString()
+          : null,
+        observation_window_hours: windowHours ? Number(windowHours) : null,
         note,
       };
+      if (Object.values({ impressions: payload.impressions, likes: payload.likes, replies: payload.replies, reposts: payload.reposts, follows: payload.follows, quotes: payload.quotes, shares: payload.shares }).some((value) => value === undefined)) {
+        throw new Error("Enter nonnegative whole numbers; impressions is required.");
+      }
+      if ([payload.likes, payload.replies, payload.reposts, payload.follows, payload.quotes, payload.shares].some((value) => value != null && value > (payload.impressions ?? 0))) {
+        throw new Error("Action counts cannot exceed impressions.");
+      }
+      if (windowHours && (!Number.isFinite(Number(windowHours)) || Number(windowHours) <= 0 || Number(windowHours) > 8760)) throw new Error("Observation window must be greater than zero and at most 8,760 hours.");
       await apiFetch(`${API}/api/simulations/${encodeURIComponent(runId)}/outcome`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       setStatus("Saved against this run id.");
+      existing.current = payload;
+      onSaved();
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -777,29 +892,37 @@ function OutcomePanel({ runId }: { runId: string }) {
         These observations are stored for future evaluation only. Saving them does not recalibrate this run,
         validate its reach estimate, or establish that a caption caused the outcome.
       </p>
-      <div className="grid gap-3 sm:grid-cols-5">
+      <fieldset disabled={fetching || saving} className="grid gap-3 sm:grid-cols-4">
         <OutcomeField label="Impressions" value={impressions} onChange={setImpressions} />
         <OutcomeField label="Likes" value={likes} onChange={setLikes} />
         <OutcomeField label="Replies" value={replies} onChange={setReplies} />
         <OutcomeField label="Reposts" value={reposts} onChange={setReposts} />
-        <OutcomeField label="Follows" value={follows} onChange={setFollows} />
-      </div>
+         <OutcomeField label="Follows" value={follows} onChange={setFollows} />
+         <OutcomeField label="Quotes" value={quotes} onChange={setQuotes} />
+          <OutcomeField label="Shares" value={shares} onChange={setShares} />
+      </fieldset>
       <input
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Optional note"
+        maxLength={2000}
+        disabled={fetching || saving}
         className="mt-3 w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none placeholder:text-[var(--muted)]"
       />
+      <fieldset disabled={fetching || saving} className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label className="block"><span className="lab-label">Observed at</span><input type="datetime-local" value={observedAt} onChange={(e) => setObservedAt(e.target.value)} className="mt-1 w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px]" /></label>
+        <label className="block"><span className="lab-label">Observation window (hours)</span><input type="number" min="0.01" max="8760" step="0.01" value={windowHours} onChange={(e) => setWindowHours(e.target.value)} className="mt-1 w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px]" /></label>
+      </fieldset>
       <div className="mt-3 flex items-center gap-3">
         <button
           type="button"
           onClick={onSave}
-          disabled={saving}
+          disabled={fetching || saving}
           className="border border-[var(--line)] px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] disabled:opacity-40"
         >
-          {saving ? "SAVING..." : "SAVE OUTCOME"}
+          {fetching ? "LOADING OUTCOME..." : saving ? "SAVING..." : "SAVE OUTCOME"}
         </button>
-        {status ? <p className="text-[12px] text-[var(--muted)]">{status}</p> : null}
+        {status ? <p role="status" className="text-[12px] text-[var(--muted)]">{status}</p> : null}
       </div>
     </div>
   );

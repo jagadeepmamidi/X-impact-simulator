@@ -5,11 +5,16 @@ export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 
-const DEFAULT_MAX_REQUEST_BYTES = 44 * 1024 * 1024;
+const DEFAULT_MAX_REQUEST_BYTES = 4_000_000;
 
 function requestLimit() {
   const configured = Number(process.env.MAX_REQUEST_BYTES);
   return Number.isSafeInteger(configured) && configured > 0 ? configured : DEFAULT_MAX_REQUEST_BYTES;
+}
+
+function timeoutMilliseconds() {
+  const seconds = Number(process.env.API_PROXY_TIMEOUT_SECONDS);
+  return (Number.isFinite(seconds) && seconds >= 1 && seconds <= 300 ? seconds : 90) * 1000;
 }
 
 async function proxy(request: NextRequest, context: RouteContext) {
@@ -53,6 +58,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
         },
       }))
     : undefined;
+  const timeout = AbortSignal.timeout(timeoutMilliseconds());
   let response: Response;
   try {
     const init: RequestInit & { duplex?: "half" } = {
@@ -61,12 +67,19 @@ async function proxy(request: NextRequest, context: RouteContext) {
       body: limitedBody,
       cache: "no-store",
       redirect: "manual",
+      signal: AbortSignal.any([request.signal, timeout]),
     };
     if (limitedBody) init.duplex = "half";
     response = await fetch(upstreamUrl, init);
   } catch {
     if (exceededLimit) {
       return NextResponse.json({ detail: "Request body exceeds configured limit" }, { status: 413 });
+    }
+    if (timeout.aborted) {
+      return NextResponse.json(
+        { detail: "Analysis timed out. It may still finish; check recent runs before retrying." },
+        { status: 504 },
+      );
     }
     return NextResponse.json({ detail: "Simulation backend is unavailable" }, { status: 502 });
   }

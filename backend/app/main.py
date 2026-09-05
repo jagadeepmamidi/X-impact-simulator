@@ -1,5 +1,7 @@
+import asyncio
 import re
 import secrets
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,6 +23,7 @@ from app.store import (
     load_outcome,
     load_report,
     load_snapshot,
+    list_reports,
     save_outcome,
     storage_status,
 )
@@ -94,6 +97,7 @@ MAX_TEXT_CHARS = settings.max_text_chars
 UPLOAD_CHUNK_BYTES = settings.upload_chunk_bytes
 ALLOWED_POPULATIONS = {40, 100, 320, 500}
 RUN_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_RUN_CAPACITY = threading.BoundedSemaphore(settings.sim_max_concurrent_runs)
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PUBLIC_DIR = REPO_ROOT / "frontend" / "public"
 
@@ -175,6 +179,25 @@ def _validate_text(value: str, field: str, *, required: bool = False) -> None:
         raise HTTPException(400, f"{field} contains a null character")
     if required and not value.strip():
         raise HTTPException(400, f"{field} is required")
+
+
+async def _run_bounded(function, *args, **kwargs):
+    """Run synchronous analysis off the event loop with a fixed in-process capacity."""
+    if not _RUN_CAPACITY.acquire(blocking=False):
+        raise HTTPException(503, "Analysis capacity is busy; retry shortly", headers={"Retry-After": "1"})
+
+    def invoke():
+        try:
+            return function(*args, **kwargs)
+        finally:
+            # The worker owns the slot so disconnect cancellation cannot release
+            # capacity while the synchronous work is still running.
+            _RUN_CAPACITY.release()
+
+    # Shield queued work too: cancelling its await must not strand an acquired slot.
+    task = asyncio.create_task(asyncio.to_thread(invoke))
+    task.add_done_callback(lambda done: None if done.cancelled() else done.exception())
+    return await asyncio.shield(task)
 
 
 def _public_text(name: str) -> str:
@@ -343,7 +366,7 @@ async def simulate(
     image_blobs, video_blob = await _read_media(images, video)
     if not text.strip() and not image_blobs and video_blob is None:
         raise HTTPException(400, "Provide text, images, or a video")
-    return run_pipeline(
+    return await _run_bounded(run_pipeline,
         niche,
         text,
         image_blobs,
@@ -373,7 +396,7 @@ async def compare(
     _validate_text(text_b, "text_b", required=True)
     _validate_controls(population, boost, seed)
     image_blobs, video_blob = await _read_media(images, video)
-    return compare_hooks(
+    return await _run_bounded(compare_hooks,
         niche,
         text_a,
         text_b,
@@ -395,14 +418,22 @@ def get_simulation(run_id: str, auth: AuthContext = Depends(protect_access)):
 
 
 @app.post("/api/simulations/{run_id}/replay")
-def replay_simulation(run_id: str, auth: AuthContext = Depends(protect_write)):
+async def replay_simulation(run_id: str, auth: AuthContext = Depends(protect_write)):
     source = load_report(_validate_run_id(run_id), owner_id=_owner_filter(auth))
     if source is None:
         raise HTTPException(404, "Unknown simulation id")
     try:
-        return replay_report(source, owner_id=auth.owner_id)
+        return await _run_bounded(replay_report, source, owner_id=auth.owner_id)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/api/simulations")
+def recent_simulations(limit: int = 20, auth: AuthContext = Depends(protect_access)):
+    if not 1 <= limit <= 100:
+        raise HTTPException(422, "limit must be between 1 and 100")
+    owner_id = _owner_filter(auth)
+    return {"runs": list_reports(owner_id=owner_id, limit=limit)}
 
 
 @app.get("/api/simulations/{run_id}/outcome")

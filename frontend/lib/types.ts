@@ -186,8 +186,23 @@ export type OutcomeRecord = {
   likes?: number | null;
   replies?: number | null;
   reposts?: number | null;
+  quotes?: number | null;
+  shares?: number | null;
   follows?: number | null;
+  observed_at?: string | null;
+  observation_window_hours?: number | null;
+  data_source?: "manual" | "x_analytics_export" | "api";
   note?: string;
+};
+
+export type RecentRun = {
+  run_id: string;
+  created_at: string;
+  niche: Niche;
+  input_text: string;
+  population: number;
+  boost: number;
+  has_outcome: boolean;
 };
 
 export type CompareReport = {

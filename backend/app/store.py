@@ -16,7 +16,9 @@ from app.config import settings
 from app.schemas import ImpactReport, OutcomeRecord
 from pydantic import ValidationError
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "runs.sqlite"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+_configured_db_path = Path(settings.sqlite_path)
+DB_PATH = _configured_db_path if _configured_db_path.is_absolute() else REPO_ROOT / _configured_db_path
 SNAPSHOT_SCHEMA_VERSION = "run-snapshot-v3"
 _SCHEMA_LOCK = RLock()
 _RUN_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -316,6 +318,41 @@ def load_report(run_id: str, owner_id: str | None = None) -> ImpactReport | None
         return None
     report, _ = _verified_report(row, run_id.strip())
     return report
+
+
+def list_reports(*, owner_id: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
+    """Return recent, integrity-verified run summaries visible to the owner."""
+    owner_id = _owner(owner_id)
+    if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
+        raise ValueError("limit must be between 1 and 100")
+    with _connection() as conn:
+        _purge_expired(conn)
+        sql = """SELECT id, created_at, niche, report_json, snapshot_json, snapshot_hash,
+                        input_hash, seed, simulator_version, config_version, owner_id,
+                        EXISTS(SELECT 1 FROM outcomes_v2 o WHERE o.run_id = runs.id) AS has_outcome
+                   FROM runs"""
+        params: tuple[Any, ...] = ()
+        if owner_id is not None:
+            sql += " WHERE owner_id = ?"
+            params = (owner_id,)
+        sql += " ORDER BY created_at DESC, id DESC LIMIT ?"
+        params += (limit,)
+        rows = conn.execute(sql, params).fetchall()
+    summaries: list[dict[str, Any]] = []
+    for row in rows:
+        report, _ = _verified_report(row, str(row["id"]))
+        summaries.append(
+            {
+                "run_id": str(row["id"]),
+                "created_at": str(row["created_at"]),
+                "niche": report.niche,
+                "input_text": report.input_text,
+                "population": report.population,
+                "boost": report.boost,
+                "has_outcome": bool(row["has_outcome"]),
+            }
+        )
+    return summaries
 
 
 def load_snapshot(run_id: str, owner_id: str | None = None) -> dict[str, Any] | None:

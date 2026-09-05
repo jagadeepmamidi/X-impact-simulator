@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     sim_users_per_persona: int = Field(default=40, ge=1, le=500)
     sim_monte_carlo_runs: int = Field(default=30, ge=1, le=500)
     sim_max_rounds: int = Field(default=6, ge=1, le=20)
+    sim_max_concurrent_runs: int = Field(default=2, ge=1, le=32)
     port: int = Field(default=8000, ge=1, le=65_535)
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     cors_origin_regex: str = ""
@@ -29,12 +30,13 @@ class Settings(BaseSettings):
     trusted_proxy_cidrs: str = ""
     max_text_chars: int = Field(default=10_000, ge=1, le=1_000_000)
     max_images: int = Field(default=5, ge=0, le=20)
-    max_image_bytes: int = Field(default=8 * 1024 * 1024, ge=1)
-    max_video_bytes: int = Field(default=32 * 1024 * 1024, ge=1)
-    max_total_upload_bytes: int = Field(default=40 * 1024 * 1024, ge=1)
-    max_request_bytes: int = Field(default=44 * 1024 * 1024, ge=1)
+    max_image_bytes: int = Field(default=3_500_000, ge=1)
+    max_video_bytes: int = Field(default=3_500_000, ge=1)
+    max_total_upload_bytes: int = Field(default=3_500_000, ge=1)
+    max_request_bytes: int = Field(default=4_000_000, ge=1)
     upload_chunk_bytes: int = Field(default=64 * 1024, ge=1024, le=1024 * 1024)
     storage_backend: Literal["sqlite"] = "sqlite"
+    sqlite_path: str = "backend/data/runs.sqlite"
     allow_sqlite_in_production: bool = False
     run_retention_days: int = Field(default=0, ge=0, le=3_650)
 

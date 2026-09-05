@@ -273,6 +273,15 @@ export function SpreadView({
     return () => window.removeEventListener("keydown", onKey);
   }, [replay]);
 
+  if (loading) {
+    return (
+      <div role="status" aria-live="polite" className="flex min-h-48 flex-col justify-center border border-[var(--line)] bg-white px-8">
+        <p className="text-[18px] font-semibold">Waiting for the analysis...</p>
+        <p className="mt-2 text-[13px] text-[var(--muted)]">The completed report will show the simulated distribution rounds.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="border border-[var(--line)] bg-white">
       <div className={`grid ${idle ? "" : "md:grid-cols-[1fr_17.5rem]"}`}>
@@ -300,7 +309,7 @@ export function SpreadView({
             <div className="flex h-full flex-col justify-center px-8">
               <p className="text-[18px] font-semibold">No simulation yet.</p>
               <p className="mt-2 max-w-xl text-[13px] leading-5 text-[var(--muted)]">
-                Post a video and set a target demographic above, then Run — the spread animates here.
+                Write a draft and choose a niche above, then run the simulation. Media is optional.
               </p>
             </div>
           ) : (
@@ -447,7 +456,7 @@ export function SpreadView({
               <AgentCard agent={selected} />
             ) : loading && !graph ? (
               <p className="font-[family-name:var(--font-geist-mono)] text-[11px] uppercase tracking-wide text-[var(--muted)]">
-                creating simulated population ({tick} of {population})
+                  Waiting for simulation results.
               </p>
             ) : (
               <p className="text-[12px] leading-5 text-[var(--muted)]">Click a blob to inspect that simulated agent.</p>
@@ -463,7 +472,7 @@ export function SpreadView({
           onClick={replay}
           className="rounded-none border border-[var(--line)] px-3 py-1 font-semibold uppercase tracking-wide text-[var(--fg)]"
         >
-          Replay
+           Replay animation
         </button>
         <span className="h-1 flex-1 bg-[var(--fill)]">
           <span className="block h-1 bg-[#2b2b2b]" style={{ width: `${(playRound / maxRound) * 100}%` }} />

@@ -18,6 +18,8 @@ tmp/
 .pytest_cache/
 backend/data/runs.sqlite
 backend/data/runs.sqlite-journal
+backend/data/runs.sqlite-wal
+backend/data/runs.sqlite-shm
 .mypy_cache/
 coverage/
 _sop_extract.txt
