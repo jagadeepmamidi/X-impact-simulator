@@ -70,7 +70,7 @@ Review the generated Nemotron files before promoting them into `backend/data/ove
 | `SIM_ACCESS_KEYS_JSON` | backend | JSON map of owner IDs to strong keys; production UI users enter their own key and can access only their runs |
 | `TRUSTED_PROXY_CIDRS` | backend | Proxy ranges allowed to supply forwarding headers for rate limiting |
 | `RUN_RETENTION_DAYS` | backend | Required and positive in production |
-| `ALLOW_SQLITE_IN_PRODUCTION` | backend | Explicit acknowledgement for a single-node persistent SQLite deployment |
+| `ALLOW_SQLITE_IN_PRODUCTION` | backend | Explicit acknowledgement for a single-node SQLite deployment; free Render storage is ephemeral |
 | `SQLITE_PATH` | backend | Database file; absolute path or relative to repository root, default `backend/data/runs.sqlite` |
 | `SIM_MAX_CONCURRENT_RUNS` | backend | Maximum active analyses per process, default 2; excess requests receive 503 with `Retry-After` |
 | `NEXT_PUBLIC_API_URL` | frontend | Optional direct API override; leave empty to use the same-origin proxy |
@@ -84,10 +84,10 @@ Copy `.env.example`. Never commit `.env`.
 
 ## Deploy
 
-- **API** — Render web service, root `backend`, start `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, health `/api/health`. Production startup requires `APP_ENV=production`, at least one strong credential in `SIM_ACCESS_KEYS_JSON` or `SIM_API_KEY`, positive retention, and either durable storage work or an explicit single-node SQLite acknowledgement with persistent disk. Prefer per-owner keys for UI users; reserve `SIM_API_KEY` for administration.
+- **API** — Render web service, root `backend`, start `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, health `/api/health`. Production startup requires `APP_ENV=production`, at least one strong credential in `SIM_ACCESS_KEYS_JSON` or `SIM_API_KEY`, positive retention, and an explicit single-node SQLite acknowledgement. Prefer per-owner keys for UI users; reserve `SIM_API_KEY` for administration.
 - **UI** — Vercel project, root `frontend`; set server-only `BACKEND_API_URL` and the same `MAX_REQUEST_BYTES` as FastAPI. Do **not** set `SIM_API_KEY` on Vercel. Leave `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SIM_DEV_TOKEN` unset; each operator enters their per-owner key in the UI, where it is kept in tab-scoped session storage and forwarded without anonymous privilege elevation.
 
-The checked-in Render blueprint specifies a **paid Starter service and persistent disk**, production mode, 30-day retention, and `SQLITE_PATH=/var/data/runs.sqlite`. Applying that blueprint can incur hosting charges; editing it locally does not deploy or purchase anything. Supply per-owner keys and the frontend origin during setup. Keep one service instance for this SQLite deployment and back up the database using SQLite's backup API; verify restore on a separate path before release. Existing deployments must explicitly migrate their current database before pointing at a new empty disk.
+The checked-in Render blueprint specifies a **free stateless service**, production mode, 30-day retention, and `SQLITE_PATH=/tmp/runs.sqlite`. Render free services cannot attach persistent disks, so saved runs and outcomes are lost when the service restarts or redeploys; use this only for demos and short pilots. Supply per-owner keys and the frontend origin during setup. For durable storage, change the service to a paid plan, attach a persistent disk, point `SQLITE_PATH` at it, keep one service instance, and back up the database using SQLite's backup API before release. Existing deployments must explicitly migrate their current database before pointing at a new empty disk.
 
 For Vercel, keep the 4 MB request limit; the proxy route requests a 120-second function duration to cover its default 90-second upstream timeout. Use a plan/settings that support that duration (or lower `API_PROXY_TIMEOUT_SECONDS` if Fluid Compute is disabled). Provider timeout/retry settings bound individual calls; stopping a browser request does not cancel those calls. Real provider latency, budgets, live media, backup/restore and hosted smoke checks remain deployment acceptance work.
 

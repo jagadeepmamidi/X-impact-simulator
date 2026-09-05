@@ -2,16 +2,12 @@ services:
   - type: web
     name: x-impact-simulator-api
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
-    disk:
-      name: x-impact-simulator-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: APP_ENV
         value: production
@@ -26,7 +22,7 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: SQLITE_PATH
-        value: /var/data/runs.sqlite
+        value: /tmp/runs.sqlite
       - key: ALLOW_SQLITE_IN_PRODUCTION
         value: "true"
       - key: RUN_RETENTION_DAYS
