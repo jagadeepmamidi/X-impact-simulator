@@ -50,6 +50,8 @@ export type SpreadAction =
   | "follow"
   | "negative";
 
+export type InteractionEvent = SpreadAction | "dwell" | "click";
+
 export type SpreadCohort = "origin" | "in_target" | "out_of_target" | "never_shown";
 
 export type SpreadAgent = {
@@ -62,10 +64,20 @@ export type SpreadAgent = {
   in_target?: boolean;
   shown_round: number | null;
   action: SpreadAction;
+  actions?: InteractionEvent[];
   watched: number;
   reason: string;
   skepticism: number;
   share_tendency: number;
+  in_network?: boolean;
+  ranking_position?: number | null;
+  ranking_selected?: boolean | null;
+  display_profile_id?: string;
+  behavior_profile_id?: string;
+  persona_source?: string;
+  persona_version?: string;
+  population_weight?: number;
+  topic_affinity?: number;
 };
 
 export type SpreadEdge = {
@@ -144,6 +156,28 @@ export type ImpactReport = {
   engagement_quality?: number;
   profile_impact?: number;
   stop_reason?: string;
+  probability_semantics?: string;
+  calibration_status?: string;
+  data_coverage_status?: string;
+  uncertainty_note?: string;
+  config_snapshot?: Record<string, unknown>;
+  provenance?: Record<string, unknown>;
+  persona_pack_version?: string;
+  persona_pack_hash?: string;
+  dataset_revision?: string;
+  dataset_hash?: string;
+  action_model_version?: string;
+  action_model_hash?: string;
+  weights_version?: string;
+  weights_hash?: string;
+  input_hash?: string;
+  fallback_reasons?: string[];
+  warnings?: string[];
+  snapshot_hash?: string;
+  replay_contract_version?: string;
+  replay_mode?: "original" | "exact" | "seed-variant" | "legacy-approximate";
+  replayable?: boolean;
+  replay_limitations?: string[];
 };
 
 export type OutcomeRecord = {

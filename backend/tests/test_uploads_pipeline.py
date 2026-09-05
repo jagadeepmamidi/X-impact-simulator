@@ -29,12 +29,15 @@ def test_simulate_text_returns_calibrated_report() -> None:
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["inference_path"].endswith("+calibrated")
+    assert body["inference_path"].endswith("+prior-map")
+    assert body["calibration_status"] == "prior-mapped-not-empirically-calibrated"
     assert body["calibration_version"]
     assert 0 <= body["impact_score"] <= 100
     assert body["impact_score"] < 98
     assert body["simulation"]["score_p10"] <= body["simulation"]["score_p50"] <= body["simulation"]["score_p90"]
-    assert body["stability"] == body["confidence"]
+    assert body["stability"] > 0
+    assert body["confidence"] == 0.0
+    assert "simulator randomness only" in body["uncertainty_note"]
     assert body["simulator_version"]
 
 
@@ -58,7 +61,7 @@ def test_pipeline_separates_strong_and_weak_text() -> None:
         population=40,
         persist=False,
     )
-    assert strong.inference_path.endswith("+calibrated")
+    assert strong.inference_path.endswith("+prior-map")
     assert weak.impact_score < strong.impact_score
     assert promo.impact_score < strong.impact_score
     assert strong.impact_score < 98

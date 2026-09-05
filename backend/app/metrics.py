@@ -29,6 +29,20 @@ def bland_baseline(personas: list[Persona]) -> float:
     return audience_score(calibrate_reactions(heuristic_reactions(personas, _BLAND)))
 
 
+def headline_impact_score(
+    reactions: list[PersonaReaction], simulation: SimulationSummary
+) -> float:
+    """Blend persona priors with the population/ranking simulation outcome.
+
+    This is a versioned scenario score, not an empirically calibrated prediction.
+    The simulation component reflects the sampled population, candidate slates,
+    network status, and propagation path; the prior component reduces run noise.
+    """
+
+    persona_prior = audience_score(reactions)
+    return round(clamp01((0.35 * persona_prior + 0.65 * simulation.score_p50) / 100.0) * 100.0, 1)
+
+
 def scorecard(
     reactions: list[PersonaReaction],
     personas: list[Persona],

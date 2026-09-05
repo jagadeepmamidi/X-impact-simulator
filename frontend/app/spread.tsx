@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import type {
   ImpactReport,
   SpreadAgent,
@@ -105,10 +105,15 @@ function fill(cohort: SpreadCohort) {
   return "#d2d2d0";
 }
 
-function actionIcon(action: SpreadAgent["action"]) {
-  if (action === "like") return "♥";
-  if (action === "reply") return "💬";
-  if (action === "repost" || action === "quote" || action === "share") return "🔁";
+function agentActions(agent: SpreadAgent) {
+  return agent.actions?.length ? agent.actions : [agent.action];
+}
+
+function actionIcon(agent: SpreadAgent) {
+  const actions = agentActions(agent);
+  if (actions.some((action) => action === "repost" || action === "quote" || action === "share")) return "🔁";
+  if (actions.includes("reply")) return "💬";
+  if (actions.includes("like")) return "♥";
   return "";
 }
 
@@ -157,14 +162,14 @@ export function SpreadView({
   const drag = useRef<{ x: number; yaw: number } | null>(null);
   const cam = useMemo(() => ({ yaw }), [yaw]);
 
-  const stopPlay = () => {
+  const stopPlay = useCallback(() => {
     if (playTimer.current != null) {
       window.clearInterval(playTimer.current);
       playTimer.current = null;
     }
-  };
+  }, []);
 
-  const play = (g: SpreadGraph) => {
+  const play = useCallback((g: SpreadGraph) => {
     stopPlay();
     const top = Math.max(
       1,
@@ -179,26 +184,31 @@ export function SpreadView({
       setPlayRound(Math.min(top, round));
       if (round >= top) stopPlay();
     }, 420);
-  };
+  }, [stopPlay]);
 
   useEffect(() => {
     if (!field || graph) return undefined;
-    setTick(0);
+    const resetId = window.setTimeout(() => setTick(0), 0);
     const id = window.setInterval(() => {
       setTick((n) => Math.min(population, n + Math.max(1, Math.round(population / 18))));
     }, 55);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearTimeout(resetId);
+      window.clearInterval(id);
+    };
   }, [field, graph, population]);
 
   useEffect(() => {
-    if (!graph) {
-      setPlayRound(0);
-      return undefined;
-    }
-    setSelected(null);
-    play(graph);
-    return stopPlay;
-  }, [graph]);
+    const id = window.setTimeout(() => {
+      setSelected(null);
+      if (graph) play(graph);
+      else setPlayRound(0);
+    }, 0);
+    return () => {
+      window.clearTimeout(id);
+      stopPlay();
+    };
+  }, [graph, play, stopPlay]);
 
   const maxRound = Math.max(
     1,
@@ -246,10 +256,10 @@ export function SpreadView({
     drag.current = null;
   };
 
-  const replay = () => {
+  const replay = useCallback(() => {
     if (!graph) return;
     play(graph);
-  };
+  }, [graph, play]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -261,7 +271,7 @@ export function SpreadView({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [replay]);
 
   return (
     <div className="border border-[var(--line)] bg-white">
@@ -364,7 +374,7 @@ export function SpreadView({
                       agent.cohort === "origin"
                         ? ""
                         : graph && cohort !== "never_shown"
-                          ? actionIcon(agent.action)
+                          ? actionIcon(agent)
                           : "";
                     const active = selected?.id === agent.id;
                     const popping = Boolean(graph && agent.shown_round === shown);
@@ -404,7 +414,7 @@ export function SpreadView({
               }}
             >
               <p className="font-semibold text-[var(--fg)]">{hover.id} · {hover.name}</p>
-              <p className="text-[var(--muted)]">{hover.role} · {hover.action}</p>
+              <p className="text-[var(--muted)]">{hover.role} · {agentActions(hover).join(" + ")}</p>
             </div>
           ) : null}
 
@@ -480,13 +490,18 @@ function LegendDot({ color, label }: { color: string; label: string }) {
 }
 
 function AgentCard({ agent }: { agent: SpreadAgent }) {
-  const trait = agent.share_tendency >= 0.3 ? "sharer" : "lurker";
-  const action = agent.action === "ignore" ? "SKIP" : agent.action.replace("_", " ").toUpperCase();
-  const affinity = Math.round(((agent.share_tendency + (1 - agent.skepticism)) / 2) * 100);
+  const actions = agentActions(agent).filter((item) => item !== "ignore");
+  const action = actions.length ? actions.map((item) => item.replace("_", " ").toUpperCase()).join(" + ") : "SKIP";
+  const dwell = Math.max(0, Math.min(100, Math.round(agent.watched * 100)));
+  const sharing = Math.max(0, Math.min(100, Math.round(agent.share_tendency * 100)));
+  const skepticism = Math.max(0, Math.min(100, Math.round(agent.skepticism * 100)));
+  const topicAffinity = agent.topic_affinity == null
+    ? null
+    : Math.max(0, Math.min(100, Math.round(agent.topic_affinity * 100)));
   return (
     <div>
       <p className="lab-label">
-        {agent.id} · {trait} · round {agent.shown_round ?? "—"}
+        {agent.id} · round {agent.shown_round ?? "—"}
       </p>
       <p className="mt-2 text-[17px] font-semibold leading-5">{agent.name}</p>
       <p className="mt-1 text-[12px] text-[var(--muted)]">{agent.role}</p>
@@ -497,14 +512,41 @@ function AgentCard({ agent }: { agent: SpreadAgent }) {
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">Action</p>
         <p className="mt-0.5 text-[15px] font-semibold uppercase tracking-wide">{action}</p>
       </div>
-      <p className="lab-label mt-4">Watched {Math.round(agent.watched * 100)}%</p>
+      <p className="lab-label mt-4">Dwell proxy {dwell}%</p>
       <span className="mt-1 block h-1.5 bg-[var(--fill)]">
-        <span className="block h-1.5 bg-[#2b2b2b]" style={{ width: `${agent.watched * 100}%` }} />
+        <span className="block h-1.5 bg-[#2b2b2b]" style={{ width: `${dwell}%` }} />
       </span>
-      <p className="lab-label mt-3">Affinity {affinity}%</p>
+      <p className="mt-1 text-[10px] leading-4 text-[var(--muted)]">Relative model signal; not watch completion.</p>
+      {topicAffinity != null ? (
+        <>
+          <p className="lab-label mt-3">Topic affinity {topicAffinity}%</p>
+          <span className="mt-1 block h-1.5 bg-[var(--fill)]">
+            <span className="block h-1.5 bg-[var(--blue)]" style={{ width: `${topicAffinity}%` }} />
+          </span>
+        </>
+      ) : null}
+      <p className="lab-label mt-3">Sharing tendency {sharing}%</p>
       <span className="mt-1 block h-1.5 bg-[var(--fill)]">
-        <span className="block h-1.5 bg-[#2b2b2b]" style={{ width: `${affinity}%` }} />
+        <span className="block h-1.5 bg-[#2b2b2b]" style={{ width: `${sharing}%` }} />
       </span>
+      <p className="lab-label mt-3">Skepticism {skepticism}%</p>
+      <span className="mt-1 block h-1.5 bg-[var(--fill)]">
+        <span className="block h-1.5 bg-[var(--out)]" style={{ width: `${skepticism}%` }} />
+      </span>
+      {agent.in_network != null || agent.ranking_position != null ? (
+        <p className="mt-3 text-[11px] leading-4 text-[var(--muted)]">
+          {agent.in_network == null ? "Network not reported" : agent.in_network ? "In-network" : "Out-of-network"}
+          {agent.ranking_position != null ? ` · candidate rank ${agent.ranking_position}` : ""}
+          {agent.ranking_selected === false ? " · not selected" : ""}
+        </p>
+      ) : null}
+      {agent.behavior_profile_id || agent.persona_source ? (
+        <p className="mt-2 break-words text-[10px] leading-4 text-[var(--muted)]">
+          {agent.behavior_profile_id ? `behavior ${agent.behavior_profile_id}` : "behavior profile not reported"}
+          {agent.persona_source ? ` · ${agent.persona_source}` : ""}
+          {agent.persona_version ? ` ${agent.persona_version}` : ""}
+        </p>
+      ) : null}
       <p className="lab-label mt-4">Why</p>
       <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">{agent.reason || "No reason on this agent."}</p>
     </div>

@@ -1,14 +1,18 @@
 # X Impact Simulator (full)
 
-> Experimental / uncalibrated. Uses the public X ranking *formula*, not Phoenix, not the live graph.
+> Experimental / prior-mapped, not empirically calibrated. Uses selected public X ranking defaults, not the live Phoenix model or graph.
 
 ## Scoring
 
 `score = offset(sum(w_i * P(action_i)))`, then out-of-network x 0.75.
 
-Pinned: xai-org/x-algorithm tree 7ba776848b12d8422eb0f291ee03ea5c17ab0188. param.rs last sync 2026-09-01T16:42:25Z. NEGATIVE_SCORES_OFFSET = 0.001. Affinities are mapped through assumed impression-level priors before scoring. UI 0-100 is a sigmoid of that calibrated raw score, not clamp(raw / 6). p10–p90 are final-cascade Monte Carlo scores.
+The headline impact score blends 35% equal-profile prior with 65% median population/ranking simulation score. This lets sampled prevalence, candidate competition, network status, and cascade path affect the result while retaining a lower-variance prior anchor. It is not empirically calibrated.
 
-Labeled Phoenix heads from BluePrint: favorite, reply, retweet, quote, follow_author, block_author. Share, dwell, click, mute, report stay heuristic/Groq until labeled.
+Source checked: xai-org/x-algorithm public main on 2026-09-04; param.rs says its defaults mirror was synced 2026-08-12. NEGATIVE_SCORES_OFFSET = 0.001. Affinities are mapped through assumed impression-level priors before both scoring and event sampling. UI 0-100 is a sigmoid of that prior-mapped raw score, not clamp(raw / 6). p10–p90 are final-cascade Monte Carlo scores; the shown graph is the run nearest median exposure/score.
+
+BluePrint training labels favorite, reply, retweet, quote, follow_author, and block_author with actor-grouped evaluation and a text-inferred cluster feature. Runtime uses only validated favorite and retweet heads as persona-preserving content lifts; share, dwell, click, mute, and report stay heuristic/Groq until labeled.
+
+The cascade uses independent compatible actions, explicit synthetic author-network relationships, and synthetic candidate-slate competition. It does not reproduce live retrieval, user history, author diversity, VMRanker, visibility filtering, or runtime experiments.
 
 ## Datasets
 

@@ -52,10 +52,35 @@ def test_replay_same_seed_matches_graph() -> None:
     assert source.affinity_reactions
     replayed = replay_report(source, persist=False)
     assert replayed.parent_run_id == source.run_id
-    assert replayed.inference_path == "replay+calibrated"
+    assert replayed.inference_path == "replay+stored-probabilities"
     assert replayed.groq_used is False
+    assert replayed.replay_mode == "exact"
+    assert replayed.config_snapshot["seed"] == source.config_snapshot["seed"]
+    assert replayed.snapshot_hash != source.snapshot_hash
     assert replayed.simulation.graph.model_dump() == source.simulation.graph.model_dump()
     assert replayed.simulation.rounds == source.simulation.rounds
+
+
+def test_replay_with_new_seed_records_variant_provenance() -> None:
+    source = run_pipeline(
+        "tech",
+        "We open-sourced a 12ms eval harness for local LLMs.",
+        [],
+        None,
+        seed=3,
+        population=40,
+        persist=False,
+    )
+
+    replayed = replay_report(source, seed=17, persist=False)
+
+    assert replayed.replay_mode == "seed-variant"
+    assert replayed.replayable is True
+    assert replayed.simulation.seed == 17
+    assert replayed.config_snapshot["seed"] == 17
+    assert replayed.provenance["replay_exact_parent_match"] is False
+    assert replayed.snapshot_hash != source.snapshot_hash
+    assert any("seed variant" in limitation for limitation in replayed.replay_limitations)
 
 
 def test_outcome_roundtrip() -> None:

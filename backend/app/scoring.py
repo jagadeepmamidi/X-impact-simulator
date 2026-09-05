@@ -3,21 +3,22 @@
 from app.calibration import CALIBRATION_NOTE, to_ui_score as calibrated_ui_score
 from app.schemas import PersonaReaction
 
-# param.rs last sync 2026-09-01T16:42:25Z; tree 7ba776848b12d8422eb0f291ee03ea5c17ab0188
+# Public default values in param.rs, whose upstream comment says its feature-switch
+# mirror was last synced 2026-08-12. Runtime experiment overrides are not public.
 X_WEIGHTS = {
     "favorite": 0.5,
     "reply": 5.0,
     "retweet": 1.0,
     "photo_expand": 0.05,
-    "video_open": 0.07,
+    "video_open": 0.05,
     "click": 0.4,
     "open_link": 0.2,
     "profile_click": 0.0,
-    "vqv": 0.0,
+    "vqv": 0.05,
     "share": 2.0,
     "share_via_dm": 5.0,
     "share_via_copy_link": 20.0,
-    "dwell": 0.05,
+    "dwell": 0.0,
     "quote": 5.0,
     "quoted_click": 0.05,
     "quoted_vqv": 0.0,
@@ -39,14 +40,17 @@ ENABLE_MULTIPLICATIVE_POST_UNEXPLORED = False
 WEIGHTS_NOTE = (
     "Score = RankingScorer weighted mode: sum(w_i * P(action_i)), then +0.001 "
     "offset, then OON x 0.75. Weights from xai-org/x-algorithm "
-    "home-mixer/params/param.rs (sync 2026-09-01). Weights scale predicted "
-    "probabilities, not raw counts. Not Phoenix, not the live graph, not production. "
+    "home-mixer/params/param.rs (upstream defaults sync 2026-08-12). Weights scale "
+    "predicted probabilities, not raw counts. VQV, profile-click, click-dwell, active-seconds, "
+    "author diversity/boosts, VMRanker, and visibility filters are not modeled. Not Phoenix, "
+    "not the live graph, and runtime experiment overrides are unknown. "
     + CALIBRATION_NOTE
 )
 
 DISCLAIMER = (
-    "Experimental / uncalibrated estimate. Uses the public X ranking formula and "
-    "published weights, not Phoenix and not the live user graph. Not a virality guarantee."
+    "Experimental, prior-mapped comparative simulation. It uses selected public X scoring "
+    "defaults, not Phoenix, runtime experiments, the live user graph, or empirical calibration. "
+    "It is neither an X replica nor a virality prediction."
 )
 
 

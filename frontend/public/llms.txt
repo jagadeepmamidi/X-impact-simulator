@@ -2,7 +2,7 @@
 
 > Experimental X-inspired audience and distribution simulator. Not a virality predictor. Not X production. No live X feed.
 
-A creator submits a draft (text, up to 5 images, or a short video). Niche personas emit Phoenix-style P(action) JSON. Python scores with public RankingScorer weighted mode from xai-org/x-algorithm (param.rs sync 2026-09-01), then Monte Carlo rounds. Groq never emits impact_score.
+A creator submits a draft (text, up to 5 images, or a short video). Curated behavior profiles emit Phoenix-style affinities, which Python maps to assumed per-impression priors and scores with selected public RankingScorer defaults from xai-org/x-algorithm. A synthetic candidate-slate cascade then runs Monte Carlo rounds. The headline impact_score blends 35% persona prior with 65% median sampled population/ranking outcome; Groq never emits it.
 
 ## Product
 

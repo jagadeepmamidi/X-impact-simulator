@@ -4,7 +4,13 @@ import json
 import re
 from typing import Any
 
-from groq import Groq, APIError
+try:
+    from groq import APIError, Groq
+except ImportError:  # The deterministic simulator remains usable without the optional SDK.
+    Groq = None  # type: ignore[assignment]
+
+    class APIError(Exception):
+        pass
 
 from app.config import settings
 from app.schemas import ContentFeatures, Persona, PersonaReaction, Explanation
@@ -17,10 +23,17 @@ controversy, promotional_intensity, safety_risk, visual_hook
 (all floats 0-1), transcript_excerpt (string)."""
 
 
-def _client() -> Groq | None:
-    if not settings.groq_enabled:
+def _client() -> Any | None:
+    if not settings.groq_enabled or Groq is None:
         return None
-    return Groq(api_key=settings.groq_api_key)
+    try:
+        return Groq(
+            api_key=settings.groq_api_key,
+            timeout=settings.groq_timeout_seconds,
+            max_retries=settings.groq_max_retries,
+        )
+    except Exception:
+        return None
 
 
 def heuristic_content(text: str, media_note: str) -> ContentFeatures:
@@ -132,7 +145,10 @@ def _reaction_from_item(item: dict, pid: str) -> PersonaReaction:
     mute = _prob(item, "mute_probability", "mute", default=round(negative * 0.22, 3))
     block = _prob(item, "block_probability", "block", default=round(negative * 0.16, 3))
     report = _prob(item, "report_probability", "report", default=round(negative * 0.08, 3))
-    lumped = max(negative, not_interested + mute + block + report)
+    component_union = 1.0 - (
+        (1.0 - not_interested) * (1.0 - mute) * (1.0 - block) * (1.0 - report)
+    )
+    lumped = max(negative, component_union)
     dwell_time = float(item.get("dwell_time") or dwell * 10.0)
     return PersonaReaction(
         persona_id=pid,
@@ -177,7 +193,7 @@ def groq_transcribe(audio_path: str) -> str:
                 response_format="text",
             )
         return str(result).strip()
-    except APIError:
+    except (APIError, OSError, TypeError, ValueError):
         return ""
 
 
@@ -229,14 +245,21 @@ def groq_persona_reactions(
     except (APIError, json.JSONDecodeError, TypeError, ValueError):
         return None
     items = data.get("reactions") or data.get("personas") or []
-    by_id = {p.id: p for p in personas}
-    out: list[PersonaReaction] = []
-    for item in items:
-        pid = str(item.get("persona_id") or "")
-        if pid not in by_id:
-            continue
-        out.append(_reaction_from_item(item, pid))
-    return out or None
+    if not isinstance(items, list) or not all(isinstance(item, dict) for item in items):
+        return None
+    expected_ids = [persona.id for persona in personas]
+    returned_ids = [str(item.get("persona_id") or "") for item in items]
+    # Partial, duplicate, or unknown persona responses would silently bias the
+    # audience. Reject the whole response and use the deterministic fallback.
+    if len(returned_ids) != len(expected_ids) or len(set(returned_ids)) != len(returned_ids):
+        return None
+    if set(returned_ids) != set(expected_ids):
+        return None
+    by_id = {str(item["persona_id"]): item for item in items}
+    try:
+        return [_reaction_from_item(by_id[pid], pid) for pid in expected_ids]
+    except (TypeError, ValueError, KeyError):
+        return None
 
 
 def groq_explain(report: dict) -> Explanation | None:

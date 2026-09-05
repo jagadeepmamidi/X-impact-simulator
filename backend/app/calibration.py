@@ -5,7 +5,11 @@ import math
 from app.schemas import PersonaReaction
 from app.sim_config import CALIBRATION_VERSION
 
-CALIBRATION_NOTE = f"{CALIBRATION_VERSION}: affinities mapped to impression-level priors."
+CALIBRATION_STATUS = "prior-mapped-not-empirically-calibrated"
+CALIBRATION_NOTE = (
+    f"{CALIBRATION_VERSION}: affinities mapped onto assumed impression-level priors; "
+    "no observed X outcomes have been fitted."
+)
 
 IMPRESSION_PRIORS: dict[str, float] = {
     "like_probability": 0.020,
@@ -50,6 +54,7 @@ def _sigmoid(x: float) -> float:
 
 
 def calibrate_probability(affinity: float, base_rate: float, scale: float = AFFINITY_LOGIT_SCALE) -> float:
+    """Map an affinity to an assumed prior; this is not empirical calibration."""
     if affinity <= 1e-9:
         return 0.0
     return _sigmoid(_logit(base_rate) + scale * (2.0 * float(affinity) - 1.0))

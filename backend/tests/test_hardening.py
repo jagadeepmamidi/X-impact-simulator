@@ -45,7 +45,7 @@ def test_replay_and_outcome_http() -> None:
     assert replayed.status_code == 200
     body = replayed.json()
     assert body["parent_run_id"] == run_id
-    assert body["inference_path"] == "replay+calibrated"
+    assert body["inference_path"] == "replay+stored-probabilities"
     saved = client.post(
         f"/api/simulations/{run_id}/outcome",
         json={"run_id": run_id, "impressions": 900, "likes": 12, "replies": 2, "reposts": 1, "follows": 0},

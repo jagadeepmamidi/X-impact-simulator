@@ -7,17 +7,22 @@ import { SpreadView } from "./spread";
 import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-const SIM_API_KEY = process.env.NEXT_PUBLIC_SIM_API_KEY ?? "";
+const DEV_API_TOKEN = process.env.NODE_ENV === "production" ? "" : (process.env.NEXT_PUBLIC_SIM_DEV_TOKEN ?? "");
+const ACCESS_KEY_STORAGE = "x-impact-simulator-access-key";
 
 function apiHeaders(init?: HeadersInit) {
   const headers = new Headers(init);
-  if (SIM_API_KEY) headers.set("X-API-Key", SIM_API_KEY);
+  // Production keys are entered by the operator and held only for this browser tab.
+  // The optional bundled token remains restricted to local development builds.
+  const sessionToken = typeof window === "undefined" ? "" : sessionStorage.getItem(ACCESS_KEY_STORAGE) ?? "";
+  const token = sessionToken || DEV_API_TOKEN;
+  if (token) headers.set("X-API-Key", token);
   return headers;
 }
 
 async function apiFetch(url: string, init?: RequestInit) {
   const response = await fetch(url, { ...init, headers: apiHeaders(init?.headers) });
-  if (response.status === 401) throw new Error("API key required or invalid");
+  if (response.status === 401) throw new Error("API access token required or invalid");
   if (response.status === 429) throw new Error("Too many runs. Wait and try again.");
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
@@ -53,12 +58,30 @@ export function Simulator() {
     ?? (images.length > 1 ? `${images.length} images selected` : images[0]?.name)
     ?? "Drop a video or images here, or click to choose.";
 
+  const clearMedia = () => {
+    setVideo(null);
+    setImages([]);
+    if (mediaInput.current) mediaInput.current.value = "";
+  };
+
   const onFiles = (list: FileList | File[]) => {
     const files = [...list];
     const vid = files.find((f) => f.type.startsWith("video/"));
     const pics = files.filter((f) => f.type.startsWith("image/")).slice(0, 5);
-    if (vid) setVideo(vid);
-    if (pics.length) setImages(pics);
+    if (vid) {
+      setVideo(vid);
+      setImages([]);
+      setError(null);
+      return;
+    }
+    if (pics.length) {
+      setImages(pics);
+      setVideo(null);
+      setError(null);
+      return;
+    }
+    clearMedia();
+    if (files.length) setError("Choose one supported video or up to five supported images.");
   };
 
   const onSubmit = async (event?: FormEvent) => {
@@ -66,6 +89,7 @@ export function Simulator() {
     setLoading(true);
     setError(null);
     setCompare(null);
+    setReport(null);
     const body = new FormData();
     body.append("niche", niche);
     body.append("boost", String(boost));
@@ -109,6 +133,9 @@ export function Simulator() {
       const loaded = (await response.json()) as ImpactReport;
       setReport(loaded);
       setNiche(loaded.niche);
+      setText(loaded.input_text ?? "");
+      setTextB("");
+      clearMedia();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Load failed");
     } finally {
@@ -127,6 +154,9 @@ export function Simulator() {
       const loaded = (await response.json()) as ImpactReport;
       setReport(loaded);
       setNiche(loaded.niche);
+      setText(loaded.input_text ?? "");
+      setTextB("");
+      clearMedia();
       if (loaded.run_id) setLoadId(loaded.run_id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Replay failed");
@@ -155,6 +185,7 @@ export function Simulator() {
                 filled={Boolean(video || images.length)}
                 onClick={() => mediaInput.current?.click()}
                 onDropFiles={onFiles}
+                onClear={clearMedia}
               />
               <Cell label="Target demographic">
                 <select
@@ -232,16 +263,26 @@ export function Simulator() {
             multiple
             accept="video/mp4,video/webm,video/quicktime,image/jpeg,image/png,image/webp,image/gif"
             className="hidden"
-            onChange={(e) => e.target.files && onFiles(e.target.files)}
+            onChange={(e) => {
+              if (e.target.files?.length) onFiles(e.target.files);
+              e.currentTarget.value = "";
+            }}
           />
         </Section>
 
-        <Section index="02" title="Spread" aside={compare ? "Hook A map — red solid = shared directly — grey dashed = shown by algo — nodes are simulated agents" : "Simulated agents — red solid = shared directly — grey dashed = shown by algo"}>
-          <SpreadView
-            report={report}
-            loading={loading}
-            population={Number(population)}
-          />
+        <Section index="02" title="Spread" aside="Simulated agents — red solid = shared directly — grey dashed = shown by ranking policy">
+          {compare ? (
+            <div className="grid gap-4">
+              <SpreadResult label="Hook A" report={compare.a} population={Number(population)} />
+              <SpreadResult label="Hook B" report={compare.b} population={Number(population)} />
+            </div>
+          ) : (
+            <SpreadView
+              report={report}
+              loading={loading}
+              population={Number(population)}
+            />
+          )}
         </Section>
 
         <Section index="03" title="Verdict" aside="Comparative, not predictive">
@@ -250,7 +291,7 @@ export function Simulator() {
       </form>
 
       {report?.run_id ? (
-        <Section index="04" title="Outcome" aside="Optional live numbers for later calibration — not scored yet">
+        <Section index="04" title="Outcome" aside="Optional observed numbers for a future calibration dataset — not scored or calibrated yet">
           <OutcomePanel runId={report.run_id} />
         </Section>
       ) : null}
@@ -263,6 +304,19 @@ export function Simulator() {
           <a href={GITHUB_REPO} className="text-[var(--fg)] hover:underline" target="_blank" rel="noreferrer">GitHub</a>
         </p>
         <div className="flex items-center gap-2">
+          <input
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value) sessionStorage.setItem(ACCESS_KEY_STORAGE, value);
+              else sessionStorage.removeItem(ACCESS_KEY_STORAGE);
+            }}
+            type="password"
+            spellCheck={false}
+            autoComplete="off"
+            aria-label="API access key"
+            placeholder="API access key"
+            className="w-36 rounded-none border border-[var(--line)] bg-white px-2 py-1 text-[12px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
+          />
           <input
             value={loadId}
             onChange={(e) => setLoadId(e.target.value)}
@@ -322,6 +376,33 @@ function Section({
   );
 }
 
+function SpreadResult({
+  label,
+  report,
+  population,
+}: {
+  label: string;
+  report: ImpactReport;
+  population: number;
+}) {
+  const simulation = report.simulation;
+  const exposure =
+    simulation.exposure_p10 != null && simulation.exposure_p90 != null
+      ? `${Math.round(simulation.exposure_p10)}–${Math.round(simulation.exposure_p90)}% exposure`
+      : "exposure range unavailable";
+  return (
+    <div>
+      <div className="flex flex-wrap items-baseline justify-between gap-2 border border-b-0 border-[var(--line)] bg-white px-3 py-2">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.08em]">{label}</p>
+        <p className="text-[11px] text-[var(--muted)]">
+          score p10–p90 {simulation.score_p10.toFixed(0)}–{simulation.score_p90.toFixed(0)} · {exposure}
+        </p>
+      </div>
+      <SpreadView report={report} loading={false} population={population} />
+    </div>
+  );
+}
+
 function Cell({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="border-b border-[var(--line)] p-4 md:border-b-0 md:border-l">
@@ -337,16 +418,29 @@ function DropCell({
   filled,
   onClick,
   onDropFiles,
+  onClear,
 }: {
   label: string;
   filename: string;
   filled: boolean;
   onClick: () => void;
   onDropFiles: (files: FileList | File[]) => void;
+  onClear: () => void;
 }) {
   return (
     <div className="p-4">
-      <p className="lab-label mb-2">{label}</p>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="lab-label">{label}</p>
+        {filled ? (
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)] hover:text-[var(--fg)]"
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
       <button
         type="button"
         onClick={onClick}
@@ -377,6 +471,20 @@ function signed(n: number) {
   return `${v > 0 ? "+" : ""}${v.toFixed(1)}`;
 }
 
+function spreadActions(agent: { action: string; actions?: string[] }) {
+  return agent.actions?.length ? agent.actions : [agent.action];
+}
+
+function humanize(value?: string | null) {
+  if (!value) return "Not reported";
+  return value.replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function versionWithHash(version?: string, hash?: string) {
+  if (!version && !hash) return null;
+  return [version, hash ? hash.slice(0, 10) : null].filter(Boolean).join(" · ");
+}
+
 function VerdictPanel({ report, compare }: { report: ImpactReport | null; compare: CompareReport | null }) {
   if (!report) {
     return (
@@ -393,7 +501,9 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
   const shown = people.filter((a) => a.cohort !== "never_shown");
   const inTarget = shown.filter((a) => a.cohort === "in_target").length;
   const outTarget = shown.filter((a) => a.cohort === "out_of_target").length;
-  const shares = shown.filter((a) => a.action === "repost" || a.action === "quote" || a.action === "share").length;
+  const shares = shown.filter((agent) =>
+    spreadActions(agent).some((action) => action === "repost" || action === "quote" || action === "share"),
+  ).length;
   const depth = report.simulation.rounds.length;
   const last = report.simulation.rounds.at(-1);
   const reachPct = report.reach_pct ?? (people.length ? Math.round((shown.length / people.length) * 100) : 0);
@@ -452,13 +562,33 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
         </div>
       </div>
       <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-5">
-        <Metric label="p10" value={report.simulation.score_p10.toFixed(0)} note="cascade score, low" />
-        <Metric label="p50" value={report.simulation.score_p50.toFixed(0)} note="median cascade" />
-        <Metric label="p90" value={report.simulation.score_p90.toFixed(0)} note="cascade score, high" />
         <Metric
-          label="Stability"
-          value={`${Math.round(report.stability ?? report.confidence ?? 0)}`}
-          note="tighter p10–p90"
+          label="Score p10–p90"
+          value={`${report.simulation.score_p10.toFixed(0)}–${report.simulation.score_p90.toFixed(0)}`}
+          note={`median ${report.simulation.score_p50.toFixed(0)} · simulated cascade score`}
+        />
+        <Metric
+          label="Exposure p10–p90"
+          value={
+            report.simulation.exposure_p10 != null && report.simulation.exposure_p90 != null
+              ? `${Math.round(report.simulation.exposure_p10)}–${Math.round(report.simulation.exposure_p90)}%`
+              : "Unavailable"
+          }
+          note={
+            report.simulation.exposure_p50 != null
+              ? `median ${Math.round(report.simulation.exposure_p50)}% · simulated population`
+              : "not reported by this run"
+          }
+        />
+        <Metric
+          label="Run stability"
+          value={`${Math.round(report.stability ?? report.confidence ?? 0)}/100`}
+          note="Monte Carlo consistency only · not model confidence"
+        />
+        <Metric
+          label="Evidence coverage"
+          value={humanize(report.data_coverage_status)}
+          note={`calibration: ${humanize(report.calibration_status)}`}
         />
         <div className="border-t border-[var(--line)] p-3 sm:border-t-0 sm:border-l lg:border-t-0">
           <p className="lab-label">Model path</p>
@@ -469,6 +599,7 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
           <p className="mt-2 text-[12px] leading-5 text-[var(--muted)]">{report.heads_note || "No trained heads applied."}</p>
         </div>
       </div>
+      <ProvenancePanel report={report} />
       {suggestions.length > 0 && (
         <div className="mt-4 border border-[var(--line)] p-3">
           <p className="lab-label">Suggestions</p>
@@ -494,6 +625,88 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
   );
 }
 
+function ProvenancePanel({ report }: { report: ImpactReport }) {
+  const fields = [
+    ["Simulator", report.simulator_version],
+    ["Persona pack", versionWithHash(report.persona_pack_version, report.persona_pack_hash)],
+    ["Action model", versionWithHash(report.action_model_version, report.action_model_hash)],
+    ["Calibration", report.calibration_version],
+    ["X weights", versionWithHash(report.weights_version, report.weights_hash)],
+    ["Dataset", versionWithHash(report.dataset_revision, report.dataset_hash)],
+    ["Prompt", report.prompt_version],
+    ["Configuration", report.config_version],
+    ["LLM", report.llm_model],
+    ["Input", report.input_hash?.slice(0, 10)],
+    ["Snapshot", report.snapshot_hash?.slice(0, 10)],
+    [
+      "Replay contract",
+      report.replay_contract_version
+        ? `${report.replay_contract_version} · ${report.replay_mode ?? "original"} · ${report.replayable ? "replayable" : "not replayable"}`
+        : null,
+    ],
+  ].filter((entry): entry is [string, string] => Boolean(entry[1]));
+  const warnings = [
+    ...(report.warnings ?? []),
+    ...(report.fallback_reasons ?? []).map((reason) => `Fallback: ${reason}`),
+    ...(report.replay_limitations ?? []).map((reason) => `Replay limitation: ${reason}`),
+    report.inference_path?.toLowerCase().includes("heuristic")
+      ? "Heuristic inference path used; compare this run only within the same model path."
+      : null,
+    report.experimental ? report.disclaimer || "Experimental simulation; not a reach forecast." : null,
+    DEV_API_TOKEN ? "Browser-visible development token is active; it is not production authentication." : null,
+  ].filter((item): item is string => Boolean(item));
+  const uniqueWarnings = [...new Set(warnings)];
+
+  return (
+    <div className="mt-4 border border-[var(--line)]">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-5">
+        {fields.length ? (
+          fields.map(([label, value]) => <Metric key={label} label={label} value={value} note="run provenance" />)
+        ) : (
+          <div className="p-3 sm:col-span-2 lg:col-span-5">
+            <p className="lab-label">Run provenance</p>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">This report did not include a version manifest.</p>
+          </div>
+        )}
+      </div>
+      <div className="border-t border-[var(--line)] p-3 text-[12px] leading-5">
+        <p className="lab-label">Interpretation</p>
+        <p className="mt-1 text-[var(--muted)]">
+          {report.probability_semantics || "Probability semantics were not reported by this run."}
+        </p>
+        <p className="mt-1 text-[var(--muted)]">
+          {report.uncertainty_note || "Ranges describe simulation variation, not guaranteed real-world outcomes."}
+        </p>
+      </div>
+      {uniqueWarnings.length ? (
+        <div className="border-t border-[var(--line)] bg-[#fff8ed] p-3">
+          <p className="lab-label text-[var(--danger)]">Warnings and fallbacks</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-[12px] leading-5 text-[var(--fg)]">
+            {uniqueWarnings.map((warning) => <li key={warning}>{warning}</li>)}
+          </ul>
+        </div>
+      ) : null}
+      {report.provenance || report.config_snapshot ? (
+        <div className="grid border-t border-[var(--line)] sm:grid-cols-2">
+          {report.provenance ? <MetadataDetails label="Provenance manifest" value={report.provenance} /> : null}
+          {report.config_snapshot ? <MetadataDetails label="Configuration snapshot" value={report.config_snapshot} /> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MetadataDetails({ label, value }: { label: string; value: Record<string, unknown> }) {
+  return (
+    <details className="border-t border-[var(--line)] p-3 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0">
+      <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.08em]">{label}</summary>
+      <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all bg-[var(--fill)] p-2 text-[10px] leading-4">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    </details>
+  );
+}
+
 function OutcomePanel({ runId }: { runId: string }) {
   const [impressions, setImpressions] = useState("");
   const [likes, setLikes] = useState("");
@@ -514,7 +727,7 @@ function OutcomePanel({ runId }: { runId: string }) {
       setFollows(record.follows != null ? String(record.follows) : "");
       setNote(record.note ?? "");
     };
-    fetch(`${API}/api/simulations/${encodeURIComponent(runId)}/outcome`)
+    apiFetch(`${API}/api/simulations/${encodeURIComponent(runId)}/outcome`)
       .then(async (response) => {
         if (!response.ok || cancelled) return;
         fill((await response.json()) as OutcomeRecord);
@@ -560,6 +773,10 @@ function OutcomePanel({ runId }: { runId: string }) {
 
   return (
     <div className="border border-[var(--line)] bg-white p-4">
+      <p className="mb-3 max-w-3xl text-[12px] leading-5 text-[var(--muted)]">
+        These observations are stored for future evaluation only. Saving them does not recalibrate this run,
+        validate its reach estimate, or establish that a caption caused the outcome.
+      </p>
       <div className="grid gap-3 sm:grid-cols-5">
         <OutcomeField label="Impressions" value={impressions} onChange={setImpressions} />
         <OutcomeField label="Likes" value={likes} onChange={setLikes} />
