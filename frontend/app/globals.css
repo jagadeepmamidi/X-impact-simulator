@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f6f6f4;
-  --fg: #111111;
-  --muted: #8a8a8a;
-  --line: #111111;
-  --hairline: #111111;
-  --fill: #ececec;
-  --ink: #111111;
-  --blue: #3b82f6;
-  --blue-press: #2563eb;
+  --bg: #f3f1ed;
+  --fg: #202328;
+  --muted: #74777c;
+  --line: #d5d7da;
+  --hairline: #e3e4e6;
+  --fill: #f0f1f2;
+  --ink: #202328;
+  --blue: #1947d1;
+  --blue-press: #1238aa;
   --like: #f91880;
   --repost: #00ba7c;
   --share: #c23b3b;
   --out: #f59a3d;
   --danger: #c23b3b;
-  --run: #111111;
-  --background: #f6f6f4;
-  --foreground: #111111;
+  --run: #202328;
+  --background: #f3f1ed;
+  --foreground: #202328;
 }
 
 @theme inline {
@@ -34,6 +34,28 @@ body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+body { min-width: 320px; }
+.simulator-shell { max-width: 1100px; padding: 18px 22px 26px; }
+.simulator-header { border-color: var(--line) !important; padding-bottom: 13px; }
+.simulator-title { font-size: 16px; letter-spacing: -0.035em; font-weight: 650; }
+.simulator-section { border-bottom: 1px solid var(--line); padding-top: 21px; padding-bottom: 21px; }
+.simulator-section h2 { font-size: 11px; letter-spacing: 0.14em; }
+.simulator-section input,
+.simulator-section textarea,
+.simulator-section select { border-color: var(--line) !important; background: #fff; }
+.simulator-section button[type="submit"] { background: var(--run); letter-spacing: 0.22em; }
+.simulator-section .lab-label { font-size: 10px; letter-spacing: 0.12em; }
+.simulator-section [class*="border-[var(--line)]"] { border-color: var(--line) !important; }
+.simulator-section textarea { line-height: 1.45; }
+.live-indicator { display: inline-flex; align-items: center; gap: 6px; }
+.live-indicator > span { width: 6px; height: 6px; border-radius: 999px; background: var(--blue); }
+@media (max-width: 640px) {
+  .simulator-shell { padding: 14px 14px 22px; }
+  .simulator-header { align-items: flex-start; gap: 14px; }
+  .simulator-title { font-size: 16px; }
+  .simulator-section { padding-top: 17px; padding-bottom: 17px; }
+}
+
 .lab-label {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 11px;
@@ -41,6 +63,12 @@ body {
   text-transform: uppercase;
   color: var(--muted);
   font-weight: 500;
+}
+
+.simulator-section :is(input, textarea, select):focus-visible,
+form:has(#media-upload:focus-visible) label[for="media-upload"] {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
 ::selection {
@@ -61,7 +89,7 @@ select,
 textarea,
 button,
 input:not([type="range"]) {
-  font: inherit;
+  font-family: inherit;
   border-radius: 0;
   appearance: none;
   -webkit-appearance: none;
@@ -126,4 +154,8 @@ footer {
 
 .edge-draw {
   animation: edge-draw 320ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spread-in, .bulb-pop, .edge-draw { animation: none; }
 }

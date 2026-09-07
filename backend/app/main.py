@@ -12,7 +12,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.config import settings
 from app.limits import client_ip, limiter
-from app.pipeline import compare_hooks, replay_report, run_pipeline
+from app.pipeline import ContentAnalysisUnavailableError, compare_hooks, replay_report, run_pipeline
 from app.schemas import Niche, OutcomeRecord
 from app.scoring import DISCLAIMER
 from app.sim_config import SIMULATOR_VERSION
@@ -85,6 +85,11 @@ app.add_middleware(CORSMiddleware, **_cors)
 @app.exception_handler(SnapshotIntegrityError)
 async def snapshot_integrity_error(_: Request, __: SnapshotIntegrityError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": "Stored simulation failed integrity verification"})
+
+@app.exception_handler(ContentAnalysisUnavailableError)
+async def content_analysis_unavailable(_: Request, exc: ContentAnalysisUnavailableError) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": str(exc)}, headers={"Retry-After": "30"})
+
 
 ALLOWED_NICHES: tuple[Niche, ...] = ("tech", "fitness", "finance", "comedy")
 IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}

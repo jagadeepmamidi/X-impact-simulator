@@ -111,6 +111,9 @@ def groq_vision_content(
     try:
         response = client.chat.completions.create(
             model=settings.groq_vision_model,
+            # Feature extraction is small; an unbounded default exceeds some OTPM tiers.
+            max_completion_tokens=512,
+            **({"reasoning_effort": "none"} if settings.groq_vision_model == "qwen/qwen3.6-27b" else {}),
             response_format={"type": "json_object"},
             messages=[{"role": "user", "content": parts}],
             temperature=0.2,

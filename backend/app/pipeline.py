@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Any
@@ -17,7 +18,7 @@ from app.groq_client import (
     heuristic_content,
 )
 from app.heads import HEADS_NOTE, apply_trained_heads, load_bundle, model_path
-from app.media import encode_image_bytes, sample_video_frames, write_temp
+from app.media import encode_image_bytes, sample_video_frames, vision_contact_sheet, write_temp
 from app.metrics import headline_impact_score, scorecard
 from app.persona_population import load_audience, sample_population
 from app.schemas import CompareDelta, CompareReport, ContentFeatures, Explanation, ImpactReport, Niche
@@ -48,6 +49,10 @@ from app.simulation import heuristic_reactions, simulate
 from app.store import load_report, save_report, snapshot_hash_for
 
 ALLOWED_POP = (40, 100, 320, 500)
+
+
+class ContentAnalysisUnavailableError(RuntimeError):
+    """Raised when media-only input cannot be analyzed by the configured provider."""
 
 
 @dataclass(frozen=True)
@@ -159,10 +164,18 @@ def prepare_media(
                 transcript = ""
             finally:
                 Path(path).unlink(missing_ok=True)
+    note = _media_note(len(image_urls), has_video, bool(transcript))
+    if len(image_urls) > 3 and settings.groq_vision_model == "qwen/qwen3.6-27b":
+        count = len(image_urls)
+        try:
+            image_urls = [vision_contact_sheet(image_urls)]
+        except (ValueError, RuntimeError) as exc:
+            raise ContentAnalysisUnavailableError("Could not prepare these images for analysis. Try JPEG or PNG images individually.") from exc
+        note += f" All {count} images/frames combined into a numbered contact sheet; fine detail is reduced."
     return PreparedMedia(
         image_urls=tuple(image_urls),
         transcript=transcript,
-        note=_media_note(len(image_urls), has_video, bool(transcript)),
+        note=note,
     )
 
 
@@ -185,10 +198,19 @@ def extract_content(
             if transcript:
                 features.transcript_excerpt = transcript[:500]
             return features
-    features = groq_text_content(combined, note)
+    if image_urls and not combined:
+        raise ContentAnalysisUnavailableError(
+            "Image analysis is unavailable; add a caption or retry when the vision provider is available."
+        )
+    fallback_note = (
+        f"{note} Vision analysis unavailable; caption-only analysis."
+        if image_urls
+        else note
+    )
+    features = groq_text_content(combined, fallback_note)
     if features:
         return features
-    return heuristic_content(combined, note)
+    return heuristic_content(combined, fallback_note)
 
 
 def template_explanation(score: float, reactions: list) -> Explanation:
@@ -209,6 +231,14 @@ def template_explanation(score: float, reactions: list) -> Explanation:
         ],
         source="heuristic",
     )
+
+
+def _is_low_information_text(text: str, *, has_media: bool) -> bool:
+    """Detect captions too short to support semantic interpretation."""
+    if has_media:
+        return False
+    words = re.findall(r"\w+", text.lower(), flags=re.UNICODE)
+    return len(text.strip()) < 12 or len(set(words)) < 3
 
 
 def run_pipeline(
@@ -287,12 +317,18 @@ def run_pipeline(
         dataset_metadata = {}
     artifact_hash = _file_hash(model_path()) if heads_used else ""
     fallback_reasons: list[str] = []
+    if _is_low_information_text(text, has_media=bool(image_blobs or video)):
+        fallback_reasons.append(
+            "Too little text to support a meaningful content assessment; simulated reach mainly reflects scenario assumptions."
+        )
     if content.source != "groq":
         fallback_reasons.append("Content features used the deterministic extractor because Groq was unavailable or failed.")
     if inference_path != "groq":
         fallback_reasons.append("Persona action affinities used the deterministic model because the LLM response was unavailable or invalid.")
     if not heads_used:
         fallback_reasons.append("No compatible BluePrint trained-head artifact was available for this input.")
+    if image_blobs and "caption-only" in content.media_note.lower():
+        fallback_reasons.append("Image analysis was unavailable; results use the caption only and do not reflect the uploaded image.")
     if video is not None and "No transcript" in content.media_note:
         fallback_reasons.append("Video audio transcription was unavailable; five sampled frames were used.")
     config_snapshot = _config_snapshot(n_pop, n_boost, used_seed)

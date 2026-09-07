@@ -36,24 +36,24 @@ function layout(agents: SpreadAgent[]): Record<string, Pt> {
   const people = agents.filter((a) => a.cohort !== "origin").length;
   const n = Math.max(1, people);
   const golden = Math.PI * (3 - Math.sqrt(5));
-  agents.forEach((agent, i) => {
+  let idx = 0;
+  agents.forEach((agent) => {
     const t = hash(agent.id);
     const u = hash(`${agent.id}:y`);
     if (agent.cohort === "origin") {
       pos[agent.id] = { x: CX, y: CY, z: 54 };
       return;
     }
-    const idx = Math.max(0, i - 1);
-    const shown = agent.shown_round != null;
-    const round = shown ? Math.max(1, agent.shown_round ?? 1) : 8;
-    const ring = (shown ? 42 : 124) + Math.sqrt((idx + 0.5) / n) * (shown ? 172 : 214);
+    const radial = Math.sqrt((idx + 0.5) / n);
     const theta = idx * golden + t * 0.32;
-    const jitter = 6 + u * 12;
-    const bias = sideOf(agent) * (shown ? 26 : 16);
-    const x = Math.min(936, Math.max(24, CX + Math.cos(theta) * ring + (t - 0.5) * jitter + bias));
-    const y = Math.min(496, Math.max(24, CY + Math.sin(theta) * ring * 0.8 + (u - 0.5) * jitter));
-    const z = shown ? 12 + (7 - Math.min(round, 6)) * 8 + t * 5 : 3 + t * 4;
+    // Keep one stable, balanced field: a small cohort bias preserves readability
+    // without making the graph collapse into two thin crescents during playback.
+    const side = sideOf(agent);
+    const x = Math.min(930, Math.max(30, CX + Math.cos(theta) * 360 * radial + side * 58 + (t - 0.5) * 14));
+    const y = Math.min(492, Math.max(34, CY + Math.sin(theta) * 212 * radial + (u - 0.5) * 18));
+    const z = 6 + t * 42;
     pos[agent.id] = { x, y, z };
+    idx += 1;
   });
   return pos;
 }
@@ -99,7 +99,7 @@ function floorRings(mode: "2d" | "3d", cam: Cam) {
 }
 
 function fill(cohort: SpreadCohort) {
-  if (cohort === "in_target") return "#3b82f6";
+  if (cohort === "in_target") return "#1947d1";
   if (cohort === "out_of_target") return "#f59a3d";
   if (cohort === "origin") return "#111111";
   return "#d2d2d0";
@@ -159,32 +159,45 @@ export function SpreadView({
   const [selected, setSelected] = useState<SpreadAgent | null>(null);
   const [hover, setHover] = useState<SpreadAgent | null>(null);
   const playTimer = useRef<number | null>(null);
+  const playRoundRef = useRef(0);
+  const speedRef = useRef<0.75 | 1 | 1.5>(1);
+  const maxRoundRef = useRef(1);
   const drag = useRef<{ x: number; yaw: number } | null>(null);
   const cam = useMemo(() => ({ yaw }), [yaw]);
-
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [speed, setSpeed] = useState<0.75 | 1 | 1.5>(1);
+  useEffect(() => { playRoundRef.current = playRound; }, [playRound]);
+  useEffect(() => { speedRef.current = speed; }, [speed]);
   const stopPlay = useCallback(() => {
     if (playTimer.current != null) {
       window.clearInterval(playTimer.current);
       playTimer.current = null;
     }
+    setIsPlaying(false);
   }, []);
 
-  const play = useCallback((g: SpreadGraph) => {
+  const play = useCallback((restart = true) => {
     stopPlay();
-    const top = Math.max(
-      1,
-      ...g.edges.map((e) => e.round),
-      ...g.agents.map((a) => a.shown_round ?? 0),
-    );
-    setPlayRound(1);
-    if (top <= 1) return;
-    let round = 1;
+    const top = maxRoundRef.current;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const current = Math.max(1, playRoundRef.current);
+    const firstRound = restart || current >= top ? 1 : current;
+    setPlayRound(reduceMotion ? top : firstRound);
+    if (reduceMotion || top <= firstRound) return;
+    setIsPlaying(true);
+    let round = firstRound;
     playTimer.current = window.setInterval(() => {
       round += 1;
       setPlayRound(Math.min(top, round));
       if (round >= top) stopPlay();
-    }, 420);
+    }, Math.round(900 / speedRef.current));
   }, [stopPlay]);
+
+  const togglePlay = useCallback(() => {
+    if (!graph) return;
+    if (isPlaying) stopPlay();
+    else play(false);
+  }, [graph, isPlaying, play, stopPlay]);
 
   useEffect(() => {
     if (!field || graph) return undefined;
@@ -201,7 +214,7 @@ export function SpreadView({
   useEffect(() => {
     const id = window.setTimeout(() => {
       setSelected(null);
-      if (graph) play(graph);
+      if (graph) play();
       else setPlayRound(0);
     }, 0);
     return () => {
@@ -216,6 +229,7 @@ export function SpreadView({
     ...live.agents.map((a) => a.shown_round ?? 0),
     report?.simulation.rounds.length ?? 1,
   );
+  useEffect(() => { maxRoundRef.current = maxRound; }, [maxRound]);
   const shown = graph ? Math.max(playRound, 1) : 0;
   const people = live.agents.filter((a) => a.cohort !== "origin");
   const visibleAgents = live.agents.filter((agent) => {
@@ -258,20 +272,22 @@ export function SpreadView({
 
   const replay = useCallback(() => {
     if (!graph) return;
-    play(graph);
+    play();
   }, [graph, play]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.code !== "Space") return;
-      const tag = (event.target as HTMLElement | null)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (event.code !== "Space" || !graph) return;
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || tag === "SUMMARY" || target?.isContentEditable) return;
+      if (target?.closest("button, a, [role='button'], [role='link']")) return;
       event.preventDefault();
       replay();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [replay]);
+  }, [graph, replay]);
 
   if (loading) {
     return (
@@ -284,14 +300,15 @@ export function SpreadView({
 
   return (
     <div className="border border-[var(--line)] bg-white">
-      <div className={`grid ${idle ? "" : "md:grid-cols-[1fr_17.5rem]"}`}>
-        <div className={`relative overflow-hidden bg-white ${idle ? "h-[12.5rem]" : "min-h-[28rem]"}`}>
+      <div className={`grid ${idle || !selected ? "" : "md:grid-cols-[minmax(0,1fr)_15rem]"}`}>
+        <div className={`relative overflow-hidden bg-white ${idle ? "h-[8rem]" : "min-h-[22rem]"}`}>
           {!idle ? (
             <div className="absolute right-3 top-3 z-10 flex border border-[var(--line)] bg-white">
               {(["2d", "3d"] as const).map((item) => (
                 <button
                   key={item}
                   type="button"
+                  aria-pressed={mode === item}
                   onClick={() => setMode(item)}
                   className={
                     mode === item
@@ -313,10 +330,11 @@ export function SpreadView({
               </p>
             </div>
           ) : (
-            <div className={`spread-in h-[28rem] w-full ${mode === "3d" ? "cursor-grab active:cursor-grabbing" : ""}`}>
+            <div className={`spread-in h-[22rem] w-full sm:h-[25rem] ${mode === "3d" ? "cursor-grab active:cursor-grabbing" : ""}`}>
               <svg
                 viewBox={`0 0 ${W} ${H}`}
                 className="h-full w-full"
+                aria-label="Simulated audience spread. Select a person to inspect their reaction."
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
@@ -391,12 +409,22 @@ export function SpreadView({
                       <g
                         key={agent.id}
                         transform={`translate(${pt.x} ${pt.y})`}
-                        className={`cursor-pointer ${popping ? "bulb-pop" : ""}`}
+                        className="cursor-pointer"
+                        role="button"
+                        tabIndex={graph ? 0 : -1}
+                        aria-label={`${agent.id}, ${agent.name}`}
                         onClick={() => graph && setSelected(agent)}
+                        onKeyDown={(event) => {
+                          if ((event.key === "Enter" || event.key === " ") && graph) {
+                            event.preventDefault();
+                            setSelected(agent);
+                          }
+                        }}
                         onMouseEnter={() => setHover(agent)}
                         onMouseLeave={() => setHover((cur) => (cur?.id === agent.id ? null : cur))}
                       >
                         <circle
+                          className={popping ? "bulb-pop" : undefined}
                           r={r + (active ? 2 : 0)}
                           fill={fill(cohort)}
                           stroke={active ? "#111" : "#f7f7f5"}
@@ -429,7 +457,7 @@ export function SpreadView({
 
           {!idle ? (
             <div className="absolute bottom-3 left-3 z-10 flex flex-wrap gap-x-3 gap-y-1 bg-white/90 px-2 py-1 text-[11px] text-[var(--muted)]">
-              <LegendDot color="#3b82f6" label="in-target" />
+              <LegendDot color="#1947d1" label="in-target" />
               <LegendDot color="#f59a3d" label="out-of-target" />
               <LegendDot color="#d2d2d0" label="never shown" />
               <span className="inline-flex items-center gap-1.5">
@@ -444,46 +472,64 @@ export function SpreadView({
           ) : null}
 
           {graph ? (
-            <p className="absolute bottom-3 right-3 z-10 bg-white/90 px-2 py-1 font-[family-name:var(--font-geist-mono)] text-[11px] tracking-wide text-[var(--muted)]">
+            <p className="absolute bottom-3 right-3 z-10 hidden lg:block bg-white/90 px-2 py-1 font-[family-name:var(--font-geist-mono)] text-[11px] tracking-wide text-[var(--muted)]">
               {mode === "3d" ? "Drag to orbit · [Space]" : "Press [Space]"}
             </p>
           ) : null}
         </div>
 
-        {idle ? null : (
-          <aside className="border-t border-[var(--line)] p-4 text-[13px] md:border-l md:border-t-0">
-            {selected ? (
-              <AgentCard agent={selected} />
-            ) : loading && !graph ? (
-              <p className="font-[family-name:var(--font-geist-mono)] text-[11px] uppercase tracking-wide text-[var(--muted)]">
-                  Waiting for simulation results.
-              </p>
-            ) : (
-              <p className="text-[12px] leading-5 text-[var(--muted)]">Click a blob to inspect that simulated agent.</p>
-            )}
+        {idle || !selected ? null : (
+          <aside className="relative border-t border-[var(--line)] p-4 text-[12px] md:border-l md:border-t-0">
+            <button type="button" aria-label="Close persona details" onClick={() => setSelected(null)} className="absolute right-2 top-2 px-2 py-1 text-[var(--muted)] hover:text-[var(--fg)]">×</button>
+            <AgentCard agent={selected} />
           </aside>
         )}
       </div>
 
       {graph ? (
-      <div className="flex flex-wrap items-center gap-3 border-t border-[var(--line)] px-3 py-2 text-[11px] text-[var(--muted)]">
-        <button
-          type="button"
-          onClick={replay}
-          className="rounded-none border border-[var(--line)] px-3 py-1 font-semibold uppercase tracking-wide text-[var(--fg)]"
-        >
-           Replay animation
-        </button>
-        <span className="h-1 flex-1 bg-[var(--fill)]">
-          <span className="block h-1 bg-[#2b2b2b]" style={{ width: `${(playRound / maxRound) * 100}%` }} />
-        </span>
-        <span className="font-[family-name:var(--font-geist-mono)] uppercase tracking-wide">
-          {playRound < maxRound ? `streaming round ${playRound}` : `round ${playRound}`}
-        </span>
-        <span className="inline-flex h-7 min-w-12 items-center justify-center rounded-none border border-[var(--line)] px-2 font-[family-name:var(--font-geist-mono)]">
-          {`${Math.max(playRound, 1)}/${maxRound}`}
-        </span>
-      </div>
+        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--line)] px-3 py-2 text-[11px] text-[var(--muted)]">
+          <button
+            type="button"
+            onClick={togglePlay}
+            aria-label={isPlaying ? "Pause round playback" : "Resume round playback"}
+            className="rounded-none border border-[var(--line)] px-3 py-1 font-semibold uppercase tracking-wide text-[var(--fg)]"
+          >
+            {isPlaying ? "Pause" : "Play"}
+          </button>
+          <button type="button" onClick={replay} className="rounded-none border border-[var(--line)] px-3 py-1 font-semibold uppercase tracking-wide text-[var(--fg)]">
+            Replay
+          </button>
+          <label className="flex min-w-[13rem] flex-1 items-center gap-2">
+            <span className="sr-only">Simulation round</span>
+            <input
+              type="range"
+              min={1}
+              max={maxRound}
+              step={1}
+              value={Math.max(1, playRound)}
+              aria-valuetext={"Round " + Math.max(1, playRound) + " of " + maxRound}
+              onChange={(event) => {
+                stopPlay();
+                setPlayRound(Number(event.target.value));
+              }}
+              className="w-full"
+            />
+          </label>
+          <label className="inline-flex items-center gap-1.5">
+            <span>Speed</span>
+            <select value={speed} aria-label="Playback speed" onChange={(event) => { const nextSpeed = Number(event.target.value) as 0.75 | 1 | 1.5; speedRef.current = nextSpeed; setSpeed(nextSpeed); if (isPlaying) play(false); }} className="border border-[var(--line)] bg-white px-1.5 py-1 text-[11px] text-[var(--fg)]">
+              <option value="0.75">0.75×</option>
+              <option value="1">1×</option>
+              <option value="1.5">1.5×</option>
+            </select>
+          </label>
+          <span className="font-[family-name:var(--font-geist-mono)] uppercase tracking-wide">
+            {"round " + Math.max(1, playRound)}
+          </span>
+          <span className="inline-flex h-7 min-w-12 items-center justify-center rounded-none border border-[var(--line)] px-2 font-[family-name:var(--font-geist-mono)]">
+            {Math.max(playRound, 1) + "/" + maxRound}
+          </span>
+        </div>
       ) : null}
     </div>
   );
@@ -517,9 +563,9 @@ function AgentCard({ agent }: { agent: SpreadAgent }) {
       {agent.interests.length > 0 ? (
         <p className="mt-2 text-[12px] leading-4 text-[var(--muted)]">{agent.interests.join(" · ")}</p>
       ) : null}
-      <div className="mt-4 bg-[var(--share)] px-2 py-2 text-white">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">Action</p>
-        <p className="mt-0.5 text-[15px] font-semibold uppercase tracking-wide">{action}</p>
+      <div className="mt-4 flex items-start gap-3 border-y border-[var(--line)] py-2">
+        <p className="lab-label">Action</p>
+        <p className="border border-[var(--line)] px-1.5 text-[10px] font-semibold uppercase tracking-wide">{action}</p>
       </div>
       <p className="lab-label mt-4">Dwell proxy {dwell}%</p>
       <span className="mt-1 block h-1.5 bg-[var(--fill)]">

@@ -44,6 +44,10 @@ Open [http://localhost:3000](http://localhost:3000). API health: [http://127.0.0
 
 Local and hosted frontend requests use the same `/api/*` handler. Set `BACKEND_API_URL` in `frontend/.env.local`; leave `NEXT_PUBLIC_API_URL` empty. The obsolete `INTERNAL_API_URL`/`BACKEND_PORT` rewrite is removed. Enter an operator key and click **Use key** when authentication is enabled. Selecting a recent run fills its ID; **Load** opens it, **Re-run snapshot** creates a new run from stored probabilities, and **Replay animation** only plays the graph.
 
+Selected pictures now show local previews and individual remove controls. Image-only runs require successful vision extraction; provider failures return an actionable error rather than a fabricated text-only result. When a caption is available, a failed image analysis is explicitly labeled as caption-only. Qwen vision responses are capped at 512 tokens; four or five images/frames are combined into a numbered contact sheet to fit the provider's three-image limit, with reduced detail noted in the report. Very short text such as `hey` is marked as insufficient context; its simulated reach reflects scenario assumptions.
+
+Graph playback supports pause/resume, replay, round scrubbing, and speed selection. Reduced-motion preferences disable autoplay. Detailed model diagnostics and observed outcomes remain available in expandable sections.
+
 The pilot accepts at most 3.5 MB of combined media and a 4 MB complete request. Larger videos need a separate upload path and are deferred. **Stop waiting** stops the browser request; synchronous server work may still finish and appear after **Refresh runs**. The proxy stops waiting after 90 seconds by default.
 
 ## Optional data preparation and training

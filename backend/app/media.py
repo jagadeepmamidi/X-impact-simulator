@@ -13,6 +13,26 @@ def encode_image_bytes(data: bytes, mime: str = "image/jpeg") -> str:
     return f"data:{mime};base64,{b64}"
 
 
+def vision_contact_sheet(image_urls: list[str]) -> str:
+    """Fit 4–5 uploads/frames into one numbered image for three-image providers."""
+    columns, tile, header = 3, 512, 28
+    rows = (len(image_urls) + columns - 1) // columns
+    sheet = np.full((rows * (tile + header), columns * tile, 3), 245, dtype=np.uint8)
+    for index, url in enumerate(image_urls):
+        data = base64.b64decode(url.split(",", 1)[1], validate=True)
+        frame = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if frame is None:
+            raise ValueError("An uploaded image could not be decoded for the vision contact sheet")
+        height, width = frame.shape[:2]
+        scale = min(tile / width, tile / height, 1.0)
+        frame = cv2.resize(frame, (max(1, round(width * scale)), max(1, round(height * scale))))
+        x = (index % columns) * tile + (tile - frame.shape[1]) // 2
+        y = (index // columns) * (tile + header) + header + (tile - frame.shape[0]) // 2
+        sheet[y:y + frame.shape[0], x:x + frame.shape[1]] = frame
+        cv2.putText(sheet, f"Image / frame {index + 1}", ((index % columns) * tile + 10, (index // columns) * (tile + header) + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (30, 30, 30), 1)
+    return encode_image_bytes(_jpeg_from_bgr(sheet))
+
+
 def _jpeg_from_bgr(frame: np.ndarray) -> bytes:
     ok, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
     if not ok:

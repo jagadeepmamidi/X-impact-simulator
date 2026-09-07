@@ -5,6 +5,7 @@ import { NICHES, NICHE_COPY, type CompareReport, type ImpactReport, type Niche, 
 import { GITHUB_REPO } from "@/lib/repo";
 import { SpreadView } from "./spread";
 import Link from "next/link";
+import Image from "next/image";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 const DEV_API_TOKEN = process.env.NODE_ENV === "production" ? "" : (process.env.NEXT_PUBLIC_SIM_DEV_TOKEN ?? "");
@@ -12,6 +13,23 @@ const ACCESS_KEY_STORAGE = "x-impact-simulator-access-key";
 const MAX_MEDIA_BYTES = 3_500_000;
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
+
+
+function isImageFile(file: File) {
+  return IMAGE_TYPES.has(file.type) || (!file.type && /\.(jpe?g|png|webp|gif)$/i.test(file.name));
+}
+
+function isVideoFile(file: File) {
+  return VIDEO_TYPES.has(file.type) || (!file.type && /\.(mp4|webm|mov)$/i.test(file.name));
+}
+
+
+function normalizedMedia(file: File) {
+  const extension = file.name.split(".").at(-1)?.toLowerCase() ?? "";
+  const mimeByExtension: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime" };
+  const type = file.type || mimeByExtension[extension] || "";
+  return type && file.type !== type ? new File([file], file.name, { type, lastModified: file.lastModified }) : file;
+}
 
 class ApiError extends Error {
   constructor(message: string, readonly status: number) {
@@ -54,6 +72,7 @@ export function Simulator() {
   const [textB, setTextB] = useState("");
   const [loadId, setLoadId] = useState("");
   const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [video, setVideo] = useState<File | null>(null);
   const [population, setPopulation] = useState("40");
   const [boost, setBoost] = useState(6);
@@ -63,6 +82,9 @@ export function Simulator() {
   const [report, setReport] = useState<ImpactReport | null>(null);
   const [compare, setCompare] = useState<CompareReport | null>(null);
   const mediaInput = useRef<HTMLInputElement>(null);
+  const previewUrls = useRef<string[]>([]);
+  useEffect(() => { previewUrls.current = imagePreviews; }, [imagePreviews]);
+  useEffect(() => () => { previewUrls.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
   const abortRef = useRef<AbortController | null>(null);
   const [apiKey, setApiKey] = useState(() => typeof window === "undefined" ? "" : sessionStorage.getItem(ACCESS_KEY_STORAGE) ?? "");
   const [keyInput, setKeyInput] = useState("");
@@ -79,19 +101,31 @@ export function Simulator() {
     return () => { cancelled = true; };
   }, [apiKey, report?.run_id, historyVersion]);
 
+
+
   const mediaLabel = video?.name
     ?? (images.length > 1 ? `${images.length} images selected` : images[0]?.name)
     ?? "Drop a video or images here, or click to choose.";
 
   const clearMedia = () => {
+    imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    setImagePreviews([]);
     setVideo(null);
     setImages([]);
     if (mediaInput.current) mediaInput.current.value = "";
   };
 
+  const removeImage = (index: number) => {
+    const removed = imagePreviews[index];
+    if (removed) URL.revokeObjectURL(removed);
+    setImagePreviews((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setImages((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setError(null);
+  };
+
   const onFiles = (list: FileList | File[]) => {
     const files = [...list];
-    if (files.some((file) => !IMAGE_TYPES.has(file.type) && !VIDEO_TYPES.has(file.type))) {
+    if (files.some((file) => !isImageFile(file) && !isVideoFile(file))) {
       clearMedia();
       setError("Choose JPEG, PNG, WebP, GIF, MP4, WebM or MOV files.");
       return;
@@ -101,12 +135,12 @@ export function Simulator() {
       setError("Keep total media at or below 3.5 MB for this pilot.");
       return;
     }
-    const vid = files.find((f) => VIDEO_TYPES.has(f.type));
-    const pics = files.filter((f) => IMAGE_TYPES.has(f.type));
+    const vid = files.find(isVideoFile);
+    const pics = files.filter(isImageFile);
     if (vid) {
       if (files.length !== 1) { clearMedia(); setError("Choose one video or up to five images."); return; }
-      setVideo(vid);
-      setImages([]);
+      clearMedia();
+      setVideo(normalizedMedia(vid));
       setError(null);
       return;
     }
@@ -116,8 +150,10 @@ export function Simulator() {
         setError("Choose up to five images.");
         return;
       }
-      setImages(pics);
-      setVideo(null);
+      const selectedPics = pics.map(normalizedMedia);
+      clearMedia();
+      setImages(selectedPics);
+      setImagePreviews(selectedPics.map((file) => URL.createObjectURL(file)));
       setError(null);
       return;
     }
@@ -234,103 +270,105 @@ export function Simulator() {
   const stopWaiting = () => abortRef.current?.abort();
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-[1180px] flex-1 flex-col px-8 py-6">
-      <header className="flex items-end justify-between border-b border-[var(--line)] pb-4">
+    <div className="simulator-shell mx-auto flex min-h-full w-full max-w-[1120px] flex-1 flex-col px-8 py-6">
+      <header className="simulator-header flex items-end justify-between border-b border-[var(--line)] pb-4">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-[24px] font-semibold tracking-tight">Impact Simulator</h1>
+          <h1 className="simulator-title text-[24px] font-semibold tracking-tight">X Impact Simulator</h1>
           <span className="hidden text-[15px] text-[var(--muted)] sm:inline">Run report</span>
         </div>
-        <Link href="/readme" className="text-[13px] text-[var(--muted)] hover:text-[var(--fg)]">About</Link>
+        <div className="flex items-center gap-4 text-[13px] text-[var(--muted)]">
+          <span className="live-indicator"><span aria-hidden="true" /> Live</span>
+          <Link href="/readme" className="hover:text-[var(--fg)]">About</Link>
+        </div>
       </header>
 
       <form onSubmit={onSubmit} className="flex flex-1 flex-col">
         <Section index="01" title="Input" aside="Write a draft, choose a niche, and compare its simulated response">
           <div className="border border-[var(--line)] bg-white">
-            <div className="grid gap-0 md:grid-cols-[2.2fr_1.1fr_1fr]">
-               <Cell label="Draft and niche">
+            <div className="grid gap-0 md:grid-cols-[minmax(0,2fr)_minmax(150px,1.05fr)_minmax(130px,.9fr)_auto]">
+              <Cell label="Draft and media" className="md:border-l-0">
+                <label className="block text-[12px]">Hook A
+                  <textarea
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder="Caption to score"
+                    maxLength={10000}
+                    rows={2}
+                    className="mt-1 w-full resize-y rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none placeholder:text-[var(--muted)]"
+                    aria-label="Hook A caption"
+                  />
+                </label>
+                <details className="mt-2 border-t border-[var(--hairline)] pt-2">
+                  <summary className="cursor-pointer text-[11px] text-[var(--muted)]">Compare with Hook B <span className="text-[10px] uppercase tracking-[0.1em]">(optional)</span></summary>
+                  <textarea
+                    value={textB}
+                    onChange={(e) => setTextB(e.target.value)}
+                    placeholder="Second caption"
+                    maxLength={10000}
+                    rows={2}
+                    className="mt-2 w-full resize-y rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none placeholder:text-[var(--muted)]"
+                    aria-label="Hook B optional caption"
+                  />
+                </details>
+                <DropCell
+                  label="Optional media"
+                  filename={mediaLabel}
+                  filled={Boolean(video || images.length)}
+                  onDropFiles={onFiles}
+                  onClear={clearMedia}
+                  previews={imagePreviews}
+                  imageNames={images.map((file) => file.name)}
+                  onRemoveImage={removeImage}
+                  inputId="media-upload"
+                />
+              </Cell>
+              <Cell label="Target niche & audience">
                 <select
                   aria-label="Niche"
                   value={niche}
                   onChange={(e) => setNiche(e.target.value as Niche)}
-                  className="mb-2 w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none"
+                  className="w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none"
                 >
-                  {NICHES.map((item) => (
-                    <option key={item} value={item}>{NICHE_LABEL[item]}</option>
-                  ))}
+                  {NICHES.map((item) => <option key={item} value={item}>{NICHE_LABEL[item]}</option>)}
                 </select>
-                 <label className="block text-[12px]">Hook A
-                   <textarea
-                   value={text}
-                   onChange={(e) => setText(e.target.value)}
-                   placeholder="Hook A — caption to score"
-                   maxLength={10000}
-                   rows={4}
-                   className="mt-1 w-full resize-y rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none placeholder:text-[var(--muted)]"
-                   aria-label="Hook A caption"
-                 /></label>
-                 <label className="mt-2 block text-[12px]">Hook B (optional)<textarea
-                   value={textB}
-                   onChange={(e) => setTextB(e.target.value)}
-                   placeholder="Hook B — optional second caption"
-                   maxLength={10000}
-                   rows={3}
-                   className="mt-2 w-full resize-y rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none placeholder:text-[var(--muted)]"
-                   aria-label="Hook B optional caption"
-                 /></label>
-                <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">{NICHE_COPY[niche]}</p>
+                <p className="mt-3 text-[11px] leading-4 text-[var(--muted)]">{NICHE_COPY[niche]}</p>
+                <p className="mt-3 border-t border-[var(--hairline)] pt-3 text-[11px] leading-4 text-[var(--muted)]">Synthetic audience pack selected for this niche.</p>
               </Cell>
-              <DropCell
-                label="Optional media"
-                filename={mediaLabel}
-                filled={Boolean(video || images.length)}
-                onClick={() => mediaInput.current?.click()}
-                onDropFiles={onFiles}
-                onClear={clearMedia}
-              />
-            <Cell label="Population">
+              <Cell label="Population">
                 <select
                   id="population"
                   aria-label="Population"
-                value={population}
-                onChange={(e) => setPopulation(e.target.value)}
-                className="w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none"
+                  value={population}
+                  onChange={(e) => setPopulation(e.target.value)}
+                  className="w-full rounded-none border border-[var(--line)] bg-white px-2 py-1.5 text-[13px] outline-none"
+                >
+                  <option value="40">40 agents</option>
+                  <option value="100">100 agents</option>
+                  <option value="320">320 agents</option>
+                  <option value="500">500 agents</option>
+                </select>
+                <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">Simulated agents</p>
+                <label className="lab-label mt-4 block" htmlFor="boost">Boost <span className="text-[var(--fg)]">{boost}</span></label>
+                <input id="boost" type="range" min={1} max={12} value={boost} onChange={(e) => setBoost(Number(e.target.value))} className="mt-2 w-full" />
+                <p className="text-[11px] text-[var(--muted)]">seeds · round 1</p>
+              </Cell>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex min-h-12 min-w-[90px] items-center justify-center border-t border-[var(--line)] bg-[var(--run)] px-5 py-3 text-[12px] font-semibold tracking-[0.18em] text-white md:min-h-full md:border-l md:border-t-0 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <option value="40">40 simulated agents</option>
-                <option value="100">100 simulated agents</option>
-                <option value="320">320 simulated agents</option>
-                <option value="500">500 simulated agents</option>
-              </select>
-              <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">~{population} simulated agents in this run</p>
-              <label className="lab-label mt-5 block" htmlFor="boost">Boost</label>
-              <input
-                id="boost"
-                type="range"
-                min={1}
-                max={12}
-                value={boost}
-                onChange={(e) => setBoost(Number(e.target.value))}
-                className="mt-2 w-full"
-              />
-              <p className="text-[11px] text-[var(--muted)]">{boost} seeds · round-1 initial reach</p>
-            </Cell>
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full border-t border-[var(--line)] bg-[var(--run)] py-3 text-[13px] font-semibold tracking-[0.28em] text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? loadingLabel : textB.trim() ? "COMPARE HOOKS" : "RUN SIMULATION"}
-          </button>
-          {error && (
-            <p role="alert" className="border-t border-[var(--hairline)] px-3 py-2 text-[15px] text-[var(--danger)]">{error}</p>
-          )}
+                {loading ? loadingLabel : textB.trim() ? "COMPARE" : "RUN"}
+              </button>
+            </div>
+            {error && <p role="alert" className="border-t border-[var(--hairline)] px-3 py-2 text-[13px] text-[var(--danger)]">{error}</p>}
           </div>
           <input
+            id="media-upload"
             ref={mediaInput}
             type="file"
             multiple
             accept="video/mp4,video/webm,video/quicktime,image/jpeg,image/png,image/webp,image/gif"
-            className="hidden"
+            className="sr-only"
             onChange={(e) => {
               if (e.target.files?.length) onFiles(e.target.files);
               e.currentTarget.value = "";
@@ -361,7 +399,10 @@ export function Simulator() {
 
       {report?.run_id ? (
         <Section index="04" title="Outcome" aside="Optional observed numbers for a future calibration dataset — not scored or calibrated yet">
-          <OutcomePanel key={report.run_id} runId={report.run_id} onSaved={() => setHistoryVersion((value) => value + 1)} />
+          <details className="border border-[var(--line)] bg-white p-3">
+            <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.1em]">Record observed outcomes</summary>
+            <div className="mt-3"><OutcomePanel key={report.run_id} runId={report.run_id} onSaved={() => setHistoryVersion((value) => value + 1)} /></div>
+          </details>
         </Section>
       ) : null}
 
@@ -443,7 +484,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="py-5">
+    <section className="simulator-section py-5">
       <div className="mb-2.5 flex items-baseline justify-between gap-4">
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--fg)]">
           {index} {title}
@@ -482,9 +523,9 @@ function SpreadResult({
   );
 }
 
-function Cell({ label, children }: { label: string; children: ReactNode }) {
+function Cell({ label, children, className = "" }: { label: string; children: ReactNode; className?: string }) {
   return (
-    <div className="border-b border-[var(--line)] p-4 md:border-b-0 md:border-l">
+    <div className={`border-b border-[var(--line)] p-4 md:border-b-0 md:border-l ${className}`}>
       <p className="lab-label mb-2">{label}</p>
       {children}
     </div>
@@ -495,44 +536,48 @@ function DropCell({
   label,
   filename,
   filled,
-  onClick,
   onDropFiles,
   onClear,
+  previews,
+  imageNames,
+  onRemoveImage,
+  inputId,
 }: {
   label: string;
   filename: string;
   filled: boolean;
-  onClick: () => void;
   onDropFiles: (files: FileList | File[]) => void;
   onClear: () => void;
+  previews: string[];
+  imageNames: string[];
+  onRemoveImage: (index: number) => void;
+  inputId: string;
 }) {
   return (
-    <div className="p-4">
+    <div className="mt-3 border-t border-[var(--hairline)] pt-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="lab-label">{label}</p>
-        {filled ? (
-          <button
-            type="button"
-            onClick={onClear}
-            className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)] hover:text-[var(--fg)]"
-          >
-            Clear
-          </button>
-        ) : null}
+        {filled ? <button type="button" onClick={onClear} className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)] hover:text-[var(--fg)]">Clear all</button> : null}
       </div>
-      <button
-        type="button"
-        onClick={onClick}
+      <label
+        htmlFor={inputId}
         onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => {
-          e.preventDefault();
-          onDropFiles(e.dataTransfer.files);
-        }}
-        className="flex min-h-[7.25rem] w-full items-center justify-center rounded-none border border-dashed border-[var(--line)] bg-white px-3 text-center text-[13px] leading-5"
+        onDrop={(e) => { e.preventDefault(); onDropFiles(e.dataTransfer.files); }}
+        className="flex min-h-10 w-full cursor-pointer items-center justify-center rounded-none border border-dashed border-[var(--line)] bg-white px-3 text-center text-[12px] leading-4"
       >
-        <span className={filled ? "font-medium" : "text-[var(--muted)]"}>{filename}</span>
-      </button>
-      <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">JPEG, PNG, WebP, GIF, MP4, WebM or MOV · one video or up to five images · total media under 3.5 MB.</p>
+        {previews.length ? (
+          <span className="grid w-full grid-cols-5 gap-1">
+            {previews.map((src, index) => (
+              <span key={src} className="group relative aspect-square overflow-hidden border border-[var(--hairline)] bg-[var(--fill)]">
+                <Image src={src} width={96} height={96} unoptimized alt={imageNames[index] || `Selected image ${index + 1}`} className="h-full w-full object-contain" />
+                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemoveImage(index); }} className="absolute right-0.5 top-0.5 bg-white/90 px-1 text-[10px] leading-4" aria-label={`Remove ${imageNames[index] || `image ${index + 1}`}`}>×</button>
+              </span>
+            ))}
+          </span>
+        ) : <span className={filled ? "font-medium" : "text-[var(--muted)]"}>{filename}</span>}
+      </label>
+      {imageNames.length ? <p className="mt-1 truncate text-[10px] text-[var(--muted)]" title={imageNames.join(", ")}>{imageNames.join(" · ")}</p> : null}
+      <p className="mt-2 text-[10px] leading-3.5 text-[var(--muted)]">JPEG, PNG, WebP, GIF, MP4, WebM or MOV · one video or up to five images · under 3.5 MB.</p>
     </div>
   );
 }
@@ -597,97 +642,64 @@ function VerdictPanel({ report, compare }: { report: ImpactReport | null; compar
         : "Comparative, not predictive";
   const stages = [...new Set(report.simulation.rounds.map((r) => r.stage).filter(Boolean))].join(" → ");
   const suggestions = report.explanation.suggestions ?? [];
+  const contextWarning = report.fallback_reasons?.find((reason) => reason.startsWith("Too little text"));
+  const storedText = (report.input_text ?? "").trim();
+  const lowContext = Boolean(contextWarning) || (report.content.media_note === "Text-only analysis." && storedText.length > 0 && storedText.split(/\s+/).length < 3);
 
   return (
     <div className="border border-[var(--line)] bg-white p-5">
-      <p className="text-[28px] font-semibold tracking-tight">{punchline(inTarget, outTarget, reachPct)}</p>
-      <p className="mt-2 max-w-3xl text-[13px] leading-5 text-[var(--muted)]">{report.explanation.summary}</p>
-      <div className="mt-5 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-6">
-        <Metric label="Audience fit" value={`${Math.round(report.audience_fit ?? 0)}`} note="pack affinity" />
-        <Metric label="Distribution" value={`${Math.round(report.distribution_potential ?? 0)}`} note="cascade depth vs cap" />
-        <Metric label="Engagement quality" value={`${Math.round(report.engagement_quality ?? 0)}`} note="reply / repost / quote / share / follow" />
-        <Metric label="Negative risk" value={`${Math.round(report.negative_signal_risk ?? 0)}`} note="mute / not-interested" />
-        <Metric label="Niche Index" value={`${Math.round(report.niche_index ?? 0)}`} note="core-pack affinity" />
-        <Metric label="Profile impact" value={`${Math.round(report.profile_impact ?? 50)}`} note="vs bland pack post" />
-      </div>
+      <p className="text-[28px] font-semibold tracking-tight">{lowContext ? "Insufficient context" : punchline(inTarget, outTarget, reachPct)}</p>
+      <p className="mt-2 max-w-3xl text-[13px] leading-5 text-[var(--muted)]">{lowContext ? (contextWarning || "Too little text for a meaningful content assessment. These numbers reflect simulation assumptions, not evidence of audience interest.") : report.explanation.summary}</p>
+      {report.content.media_note !== "Text-only analysis." && (
+        <p className="mt-3 border-l-2 border-[var(--blue)] pl-3 text-[12px] leading-5 text-[var(--muted)]">
+          {report.content.media_note}
+          {report.content.source === "groq" && report.content.topics.length > 0 ? ` Detected topics: ${report.content.topics.join(", ")}.` : ""}
+        </p>
+      )}
+      <p className="mt-3 text-[11px] leading-4 text-[var(--muted)]">
+        {report.experimental ? (report.disclaimer || "Experimental simulation; not a reach forecast.") : "Comparative simulation; not predictive."}
+        {report.inference_path?.toLowerCase().includes("heuristic") ? " Heuristic inference path used; compare runs within the same model path." : ""}
+      </p>
       <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-5">
         <Metric
           label="Simulated exposure"
           value={`${Math.round(reachPct)}%`}
-          note={`${shown.length} of ${people.length} simulated agents${
-            report.simulation.exposure_p10 != null && report.simulation.exposure_p90 != null
-              ? ` · MC p10–p90 ${Math.round(report.simulation.exposure_p10)}–${Math.round(report.simulation.exposure_p90)}%`
-              : ""
-          }`}
+          note={`${shown.length} of ${people.length} simulated agents${report.simulation.exposure_p10 != null && report.simulation.exposure_p90 != null ? ` · MC p10–p90 ${Math.round(report.simulation.exposure_p10)}–${Math.round(report.simulation.exposure_p90)}%` : ""}`}
         />
         <div className="border-t border-[var(--line)] p-3 sm:border-t-0 sm:border-l">
           <p className="lab-label">% of target</p>
           <p className="mt-1 text-[22px] font-semibold">{ofTarget}/100</p>
-          <span className="mt-2 flex h-1.5 overflow-hidden bg-[var(--fill)]">
-            <span className="h-full bg-[var(--blue)]" style={{ width: `${inShare}%` }} />
-            <span className="h-full bg-[var(--out)]" style={{ width: `${100 - inShare}%` }} />
-          </span>
+          <span className="mt-2 flex h-1.5 overflow-hidden bg-[var(--fill)]"><span className="h-full bg-[var(--blue)]" style={{ width: `${inShare}%` }} /><span className="h-full bg-[var(--out)]" style={{ width: `${100 - inShare}%` }} /></span>
           <p className="mt-1 text-[11px] text-[var(--muted)]">{inTarget} in / {outTarget} out</p>
         </div>
         <Metric label="Share rate" value={`${sharePct}%`} note={`${shares} shares / ${shown.length} views`} />
-        <Metric
-          label="Cascade depth"
-          value={`${depth} rounds`}
-          note={report.stop_reason || last?.stop_reason || (last?.stopped ? "velocity-gated" : "ran to cap")}
-        />
-        <div className="border-t border-[var(--line)] p-3 lg:border-t-0 lg:border-l">
-          <p className="lab-label">Stages</p>
-          <p className="mt-2 text-[14px] font-semibold leading-5">{stages || tag}</p>
-        </div>
+        <Metric label="Cascade depth" value={`${depth} rounds`} note={report.stop_reason || last?.stop_reason || (last?.stopped ? "velocity-gated" : "ran to cap")} />
+        <div className="border-t border-[var(--line)] p-3 lg:border-t-0 lg:border-l"><p className="lab-label">Stages</p><p className="mt-2 text-[14px] font-semibold leading-5">{stages || tag}</p></div>
       </div>
-      <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-5">
-        <Metric
-          label="Score p10–p90"
-          value={`${report.simulation.score_p10.toFixed(0)}–${report.simulation.score_p90.toFixed(0)}`}
-          note={`median ${report.simulation.score_p50.toFixed(0)} · simulated cascade score`}
-        />
-        <Metric
-          label="Exposure p10–p90"
-          value={
-            report.simulation.exposure_p10 != null && report.simulation.exposure_p90 != null
-              ? `${Math.round(report.simulation.exposure_p10)}–${Math.round(report.simulation.exposure_p90)}%`
-              : "Unavailable"
-          }
-          note={
-            report.simulation.exposure_p50 != null
-              ? `median ${Math.round(report.simulation.exposure_p50)}% · simulated population`
-              : "not reported by this run"
-          }
-        />
-        <Metric
-          label="Run stability"
-          value={`${Math.round(report.stability ?? report.confidence ?? 0)}/100`}
-          note="Monte Carlo consistency only · not model confidence"
-        />
-        <Metric
-          label="Evidence coverage"
-          value={humanize(report.data_coverage_status)}
-          note={`calibration: ${humanize(report.calibration_status)}`}
-        />
-        <div className="border-t border-[var(--line)] p-3 sm:border-t-0 sm:border-l lg:border-t-0">
-          <p className="lab-label">Model path</p>
-          <p className="mt-2 text-[12px] leading-5 text-[var(--muted)]">
-            {(report.inference_path || (report.groq_used ? "groq" : "heuristic")).toUpperCase()}
-            {report.calibration_version ? ` · ${report.calibration_version}` : ""}
-          </p>
-          <p className="mt-2 text-[12px] leading-5 text-[var(--muted)]">{report.heads_note || "No trained heads applied."}</p>
+      <details className="mt-4 border border-[var(--line)] p-3">
+        <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.1em]">Model details &amp; provenance</summary>
+        <div className="mt-3 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-6">
+          <Metric label="Audience fit" value={`${Math.round(report.audience_fit ?? 0)}`} note="pack affinity" />
+          <Metric label="Distribution" value={`${Math.round(report.distribution_potential ?? 0)}`} note="cascade depth vs cap" />
+          <Metric label="Engagement quality" value={`${Math.round(report.engagement_quality ?? 0)}`} note="reply / repost / quote / share / follow" />
+          <Metric label="Negative risk" value={`${Math.round(report.negative_signal_risk ?? 0)}`} note="mute / not-interested" />
+          <Metric label="Niche Index" value={`${Math.round(report.niche_index ?? 0)}`} note="core-pack affinity" />
+          <Metric label="Profile impact" value={`${Math.round(report.profile_impact ?? 50)}`} note="vs bland pack post" />
         </div>
-      </div>
-      <ProvenancePanel report={report} />
+        <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-2 lg:grid-cols-5">
+          <Metric label="Score p10–p90" value={`${report.simulation.score_p10.toFixed(0)}–${report.simulation.score_p90.toFixed(0)}`} note={`median ${report.simulation.score_p50.toFixed(0)} · simulated cascade score`} />
+          <Metric label="Exposure p10–p90" value={report.simulation.exposure_p10 != null && report.simulation.exposure_p90 != null ? `${Math.round(report.simulation.exposure_p10)}–${Math.round(report.simulation.exposure_p90)}%` : "Unavailable"} note={report.simulation.exposure_p50 != null ? `median ${Math.round(report.simulation.exposure_p50)}% · simulated population` : "not reported by this run"} />
+          <Metric label="Run stability" value={`${Math.round(report.stability ?? report.confidence ?? 0)}/100`} note="Monte Carlo consistency only · not model confidence" />
+          <Metric label="Evidence coverage" value={humanize(report.data_coverage_status)} note={`calibration: ${humanize(report.calibration_status)}`} />
+          <div className="border-t border-[var(--line)] p-3 sm:border-t-0 sm:border-l lg:border-t-0"><p className="lab-label">Model path</p><p className="mt-2 text-[12px] leading-5 text-[var(--muted)]">{(report.inference_path || (report.groq_used ? "groq" : "heuristic")).toUpperCase()}{report.calibration_version ? ` · ${report.calibration_version}` : ""}</p><p className="mt-2 text-[12px] leading-5 text-[var(--muted)]">{report.heads_note || "No trained heads applied."}</p></div>
+        </div>
+        <ProvenancePanel report={report} />
+      </details>
       {suggestions.length > 0 && (
-        <div className="mt-4 border border-[var(--line)] p-3">
-          <p className="lab-label">Suggestions</p>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-5">
-            {suggestions.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
+        <details className="mt-4 border border-[var(--line)] p-3">
+          <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.1em]">Suggestions ({suggestions.length})</summary>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-5">{suggestions.map((item) => <li key={item}>{item}</li>)}</ul>
+        </details>
       )}
       {compare && (
         <div className="mt-4 grid border border-[var(--line)] sm:grid-cols-3">
