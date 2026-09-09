@@ -11,6 +11,7 @@ from app.calibration import CALIBRATION_STATUS, calibrate_reactions
 from app.config import settings
 from app.groq_client import (
     groq_explain,
+    groq_is_enabled,
     groq_persona_reactions,
     groq_text_content,
     groq_transcribe,
@@ -156,7 +157,7 @@ def prepare_media(
         video_bytes, suffix = video
         frames = sample_video_frames(video_bytes, count=5)
         image_urls = (image_urls + frames)[:5]
-        if settings.groq_enabled:
+        if groq_is_enabled():
             path = write_temp(video_bytes, suffix or ".mp4")
             try:
                 transcript = groq_transcribe(path)

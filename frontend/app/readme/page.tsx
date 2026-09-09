@@ -29,7 +29,7 @@ export default function ReadmePage() {
         </ul>
 
         <h2 className="mt-8 text-[13px] font-semibold uppercase tracking-[0.08em]">Local run</h2>
-        <p className="mt-3">Python 3.11+, Node 20+, Groq key in <code className="text-[13px]">.env</code>. Backend on :8000, frontend on :3000. Full commands live in the GitHub README.</p>
+        <p className="mt-3">Python 3.11+, Node 20+, Groq key in server <code className="text-[13px]">.env</code>. Visitors do not enter a key. Backend on :8000, frontend on :3000. Full commands live in the GitHub README.</p>
 
         <h2 className="mt-8 text-[13px] font-semibold uppercase tracking-[0.08em]">Disclaimer</h2>
         <p className="mt-3 text-[var(--muted)]">Prior-mapped research prototype, not empirically calibrated. Ranking weights follow public X defaults, not runtime experiments or the full production stack. p10–p90 measure variation across full-cascade simulator runs, not model confidence. Treat ranges as comparative scenarios, not forecasts.</p>

@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     cors_origin_regex: str = ""
     sim_api_key: str = ""
     sim_access_keys_json: str = ""
+    sim_public_demo: bool = False
+    sim_public_runs_per_hour: int = Field(default=20, ge=0, le=10_000)
     rate_limit_requests: int = Field(default=60, ge=0, le=100_000)
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=86_400)
     rate_limit_max_clients: int = Field(default=10_000, ge=100, le=1_000_000)
@@ -97,8 +99,8 @@ class Settings(BaseSettings):
             raise ValueError("MAX_VIDEO_BYTES cannot exceed MAX_TOTAL_UPLOAD_BYTES")
         if self.sim_api_key.strip() and self.sim_api_key.strip() in access_keys.values():
             raise ValueError("SIM_API_KEY must differ from every SIM_ACCESS_KEYS_JSON user key")
-        if self.is_production and not self.sim_api_key.strip() and not access_keys:
-            raise ValueError("SIM_API_KEY or SIM_ACCESS_KEYS_JSON is required when APP_ENV=production")
+        if self.is_production and not self.sim_api_key.strip() and not access_keys and not self.sim_public_demo:
+            raise ValueError("SIM_API_KEY, SIM_ACCESS_KEYS_JSON, or SIM_PUBLIC_DEMO is required when APP_ENV=production")
         if self.is_production and self.storage_backend == "sqlite" and not self.allow_sqlite_in_production:
             raise ValueError(
                 "SQLite is a single-node development store; set up a durable production store "

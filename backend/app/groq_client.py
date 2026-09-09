@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from contextvars import ContextVar, Token
 from typing import Any
 
 try:
@@ -22,13 +23,35 @@ sentiment (positive|neutral|negative), hook_strength, clarity, novelty,
 controversy, promotional_intensity, safety_risk, visual_hook
 (all floats 0-1), transcript_excerpt (string)."""
 
+_request_api_key: ContextVar[str | None] = ContextVar("groq_request_api_key", default=None)
+
+
+def set_request_groq_key(key: str | None) -> Token[str | None]:
+    return _request_api_key.set((key or "").strip() or None)
+
+
+def reset_request_groq_key(token: Token[str | None]) -> None:
+    _request_api_key.reset(token)
+
+
+def active_groq_api_key() -> str:
+    override = (_request_api_key.get() or "").strip()
+    if override:
+        return override
+    return settings.groq_api_key.strip()
+
+
+def groq_is_enabled() -> bool:
+    return bool(active_groq_api_key()) and Groq is not None
+
 
 def _client() -> Any | None:
-    if not settings.groq_enabled or Groq is None:
+    api_key = active_groq_api_key()
+    if not api_key or Groq is None:
         return None
     try:
         return Groq(
-            api_key=settings.groq_api_key,
+            api_key=api_key,
             timeout=settings.groq_timeout_seconds,
             max_retries=settings.groq_max_retries,
         )

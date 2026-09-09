@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.config import settings
+from app.groq_client import reset_request_groq_key, set_request_groq_key
 from app.limits import client_ip, limiter
 from app.pipeline import ContentAnalysisUnavailableError, compare_hooks, replay_report, run_pipeline
 from app.schemas import Niche, OutcomeRecord
@@ -102,6 +103,9 @@ MAX_TEXT_CHARS = settings.max_text_chars
 UPLOAD_CHUNK_BYTES = settings.upload_chunk_bytes
 ALLOWED_POPULATIONS = {40, 100, 320, 500}
 RUN_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+DEMO_SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
+_GROQ_KEY_RE = re.compile(r"^[A-Za-z0-9._-]{8,256}$")
+_RESERVED_OWNERS = {"admin", "development"}
 _RUN_CAPACITY = threading.BoundedSemaphore(settings.sim_max_concurrent_runs)
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PUBLIC_DIR = REPO_ROOT / "frontend" / "public"
@@ -111,33 +115,59 @@ PUBLIC_DIR = REPO_ROOT / "frontend" / "public"
 class AuthContext:
     owner_id: str
     is_admin: bool = False
+    is_public: bool = False
+
+
+def _header_str(value: object) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _personal_groq_key(raw: object) -> str:
+    value = _header_str(raw)
+    if not value:
+        return ""
+    if not _GROQ_KEY_RE.fullmatch(value):
+        raise HTTPException(status_code=400, detail="Invalid Groq API key")
+    return value
 
 
 def protect_access(
     request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+    x_demo_session: str | None = Header(default=None, alias="X-Demo-Session"),
 ) -> AuthContext:
     host = client_ip(request, settings.trusted_proxy_list)
-    supplied = x_api_key or ""
+    supplied = _header_str(x_api_key)
+    demo_session = _header_str(x_demo_session)
     admin_key = settings.sim_api_key.strip()
     access_keys = settings.sim_access_key_map
-    admin_match = bool(admin_key) and secrets.compare_digest(supplied.encode(), admin_key.encode())
+    admin_match = bool(admin_key) and bool(supplied) and secrets.compare_digest(supplied.encode(), admin_key.encode())
     matched_owner = next(
         (
             owner_id
             for owner_id, expected in access_keys.items()
-            if secrets.compare_digest(supplied.encode(), expected.encode())
+            if supplied and secrets.compare_digest(supplied.encode(), expected.encode())
         ),
         None,
     )
-    if not admin_key and not access_keys:
-        if settings.is_production:
-            raise HTTPException(status_code=503, detail="Production authentication is not configured")
-        auth = AuthContext(owner_id="development")
-    elif admin_match:
+    if admin_match:
         auth = AuthContext(owner_id="admin", is_admin=True)
     elif matched_owner is not None:
         auth = AuthContext(owner_id=matched_owner)
+    elif settings.sim_public_demo:
+        if not DEMO_SESSION_RE.fullmatch(demo_session) or demo_session in _RESERVED_OWNERS:
+            limiter.hit(
+                f"unauthenticated:{host}",
+                settings.rate_limit_requests,
+                settings.rate_limit_window_seconds,
+                max_keys=settings.rate_limit_max_clients,
+            )
+            raise HTTPException(status_code=401, detail="Invalid or missing demo session")
+        auth = AuthContext(owner_id=demo_session, is_public=True)
+    elif not admin_key and not access_keys:
+        if settings.is_production:
+            raise HTTPException(status_code=503, detail="Production authentication is not configured")
+        auth = AuthContext(owner_id="development")
     else:
         limiter.hit(
             f"unauthenticated:{host}",
@@ -156,6 +186,25 @@ def protect_access(
 
 
 protect_write = protect_access
+
+
+async def protect_run(
+    auth: AuthContext = Depends(protect_access),
+    x_groq_api_key: str | None = Header(default=None, alias="X-Groq-API-Key"),
+):
+    personal = _personal_groq_key(x_groq_api_key)
+    if auth.is_public and not personal:
+        limiter.hit(
+            "public-server-groq",
+            settings.sim_public_runs_per_hour,
+            3600,
+            max_keys=settings.rate_limit_max_clients,
+        )
+    token = set_request_groq_key(personal)
+    try:
+        yield auth
+    finally:
+        reset_request_groq_key(token)
 
 
 def _owner_filter(auth: AuthContext) -> str | None:
@@ -254,6 +303,7 @@ def health() -> dict:
         "groq": settings.groq_enabled,
         "experimental": True,
         "auth": bool(settings.sim_api_key.strip() or settings.sim_access_key_map),
+        "public_demo": settings.sim_public_demo,
         "environment": settings.app_env,
         "storage": storage_status(),
     }
@@ -362,7 +412,7 @@ async def simulate(
     population: int = Form(default=100),
     images: list[UploadFile] | None = File(default=None),
     video: UploadFile | None = File(default=None),
-    auth: AuthContext = Depends(protect_write),
+    auth: AuthContext = Depends(protect_run),
 ):
     if niche not in ALLOWED_NICHES:
         raise HTTPException(400, "Unknown niche pack")
@@ -393,7 +443,7 @@ async def compare(
     population: int = Form(default=100),
     images: list[UploadFile] | None = File(default=None),
     video: UploadFile | None = File(default=None),
-    auth: AuthContext = Depends(protect_write),
+    auth: AuthContext = Depends(protect_run),
 ):
     if niche not in ALLOWED_NICHES:
         raise HTTPException(400, "Unknown niche pack")
@@ -423,7 +473,7 @@ def get_simulation(run_id: str, auth: AuthContext = Depends(protect_access)):
 
 
 @app.post("/api/simulations/{run_id}/replay")
-async def replay_simulation(run_id: str, auth: AuthContext = Depends(protect_write)):
+async def replay_simulation(run_id: str, auth: AuthContext = Depends(protect_run)):
     source = load_report(_validate_run_id(run_id), owner_id=_owner_filter(auth))
     if source is None:
         raise HTTPException(404, "Unknown simulation id")

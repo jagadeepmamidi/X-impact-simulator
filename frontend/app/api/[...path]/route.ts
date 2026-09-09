@@ -33,7 +33,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
   upstreamUrl.search = request.nextUrl.search;
 
   const headers = new Headers();
-  for (const name of ["accept", "content-type", "x-api-key"]) {
+  for (const name of ["accept", "content-type", "x-api-key", "x-demo-session", "x-groq-api-key"]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }

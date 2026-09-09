@@ -15,6 +15,10 @@ services:
         value: "3.11.9"
       - key: GROQ_API_KEY
         sync: false
+      - key: SIM_PUBLIC_DEMO
+        value: "true"
+      - key: SIM_PUBLIC_RUNS_PER_HOUR
+        value: "20"
       - key: SIM_API_KEY
         sync: false
       - key: SIM_ACCESS_KEYS_JSON

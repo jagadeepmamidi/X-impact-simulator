@@ -42,7 +42,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). API health: [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health).
 
-Local and hosted frontend requests use the same `/api/*` handler. Set `BACKEND_API_URL` in `frontend/.env.local`; leave `NEXT_PUBLIC_API_URL` empty. The obsolete `INTERNAL_API_URL`/`BACKEND_PORT` rewrite is removed. Enter an operator key and click **Use key** when authentication is enabled. Selecting a recent run fills its ID; **Load** opens it, **Re-run snapshot** creates a new run from stored probabilities, and **Replay animation** only plays the graph.
+Local and hosted frontend requests use the same `/api/*` handler. Set `BACKEND_API_URL` in `frontend/.env.local`; leave `NEXT_PUBLIC_API_URL` empty. The obsolete `INTERNAL_API_URL`/`BACKEND_PORT` rewrite is removed. Public demo mode requires no operator key. The optional personal Groq key uses the visitor's provider quota; private deployments still accept an operator key under advanced access settings. Selecting a recent run fills its ID; **Load** opens it, **Re-run snapshot** creates a new run from stored probabilities, and **Replay animation** only plays the graph.
 
 Selected pictures now show local previews and individual remove controls. Image-only runs require successful vision extraction; provider failures return an actionable error rather than a fabricated text-only result. When a caption is available, a failed image analysis is explicitly labeled as caption-only. Qwen vision responses are capped at 512 tokens; four or five images/frames are combined into a numbered contact sheet to fit the provider's three-image limit, with reduced detail noted in the report. Very short text such as `hey` is marked as insufficient context; its simulated reach reflects scenario assumptions.
 
@@ -70,6 +70,7 @@ Review the generated Nemotron files before promoting them into `backend/data/ove
 | `APP_ENV` | backend | `development`, `test`, or fail-closed `production` validation |
 | `GROQ_API_KEY` | backend | Optional text, vision, Whisper; deterministic fallback works without it |
 | `CORS_ORIGINS` | backend | Comma-separated frontend origins |
+| `SIM_PUBLIC_DEMO` | backend | Opt-in public runs using the server Groq quota; defaults to false. Visitors receive separate browser-session ownership and remain rate limited. |
 | `SIM_API_KEY` | backend | Optional administrator key with access to every owner; never configure it on the frontend server |
 | `SIM_ACCESS_KEYS_JSON` | backend | JSON map of owner IDs to strong keys; production UI users enter their own key and can access only their runs |
 | `TRUSTED_PROXY_CIDRS` | backend | Proxy ranges allowed to supply forwarding headers for rate limiting |
@@ -88,8 +89,8 @@ Copy `.env.example`. Never commit `.env`.
 
 ## Deploy
 
-- **API** — Render web service, root `backend`, start `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, health `/api/health`. Production startup requires `APP_ENV=production`, at least one strong credential in `SIM_ACCESS_KEYS_JSON` or `SIM_API_KEY`, positive retention, and an explicit single-node SQLite acknowledgement. Prefer per-owner keys for UI users; reserve `SIM_API_KEY` for administration.
-- **UI** — Vercel project, root `frontend`; set server-only `BACKEND_API_URL` and the same `MAX_REQUEST_BYTES` as FastAPI. Do **not** set `SIM_API_KEY` on Vercel. Leave `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SIM_DEV_TOKEN` unset; each operator enters their per-owner key in the UI, where it is kept in tab-scoped session storage and forwarded without anonymous privilege elevation.
+- **API** — Render web service, root `backend`, start `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, health `/api/health`. Production startup requires `APP_ENV=production`, `SIM_PUBLIC_DEMO=true` and/or a strong credential in `SIM_ACCESS_KEYS_JSON` or `SIM_API_KEY`, positive retention, and an explicit single-node SQLite acknowledgement. Public demo visitors use the server Groq key; reserve `SIM_API_KEY` for administration.
+- **UI** — Vercel project, root `frontend`; set server-only `BACKEND_API_URL` and the same `MAX_REQUEST_BYTES` as FastAPI. Do **not** set `SIM_API_KEY` or `GROQ_API_KEY` on Vercel. Leave `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SIM_DEV_TOKEN` unset; public demo visitors need no operator key when `SIM_PUBLIC_DEMO` is enabled on the backend. Private operator keys stay under Advanced access and are forwarded only to the backend.
 
 The checked-in Render blueprint specifies a **free stateless service**, production mode, 30-day retention, and `SQLITE_PATH=/tmp/runs.sqlite`. Render free services cannot attach persistent disks, so saved runs and outcomes are lost when the service restarts or redeploys; use this only for demos and short pilots. Supply per-owner keys and the frontend origin during setup. For durable storage, change the service to a paid plan, attach a persistent disk, point `SQLITE_PATH` at it, keep one service instance, and back up the database using SQLite's backup API before release. Existing deployments must explicitly migrate their current database before pointing at a new empty disk.
 
@@ -97,7 +98,9 @@ For Vercel, keep the 4 MB request limit; the proxy route requests a 120-second f
 
 ## API
 
-Send the operator key as `X-API-Key`. A key from `SIM_ACCESS_KEYS_JSON` owns every run it creates and receives `404` for another owner's run IDs; the optional `SIM_API_KEY` is an administrator override.
+With public demo mode enabled, the browser sends a random tab-scoped `X-Demo-Session` identifier so visitors can access only their own saved runs. The default analysis uses the server's Groq key. Visitors can optionally provide a personal Groq key through `X-Groq-API-Key`; it is used only for their request and is never stored in a report. Closing the tab clears the browser's session credentials.
+
+Private operators can still send their key as `X-API-Key`. A key from `SIM_ACCESS_KEYS_JSON` owns every run it creates and receives `404` for another owner's run IDs; the optional `SIM_API_KEY` is an administrator override. Public mode is disabled unless explicitly enabled on the backend. Enabling it allows visitors to consume the configured server Groq quota; request and concurrency limits still apply. The shared server-key budget is 20 public runs per hour by default (`SIM_PUBLIC_RUNS_PER_HOUR`), counted across visitors; personal Groq keys bypass only that shared budget. Limits are in memory on this single-process demo and reset when it restarts.
 
 | Method | Path | Notes |
 | --- | --- | --- |

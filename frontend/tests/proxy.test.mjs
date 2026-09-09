@@ -35,7 +35,13 @@ test("built frontend uses the same bounded API proxy outside Vercel", { timeout:
       return;
     }
     response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify({ path: request.url, key: request.headers["x-api-key"] ?? null, bytes }));
+    response.end(JSON.stringify({
+      path: request.url,
+      key: request.headers["x-api-key"] ?? null,
+      demo: request.headers["x-demo-session"] ?? null,
+      groq: request.headers["x-groq-api-key"] ?? null,
+      bytes,
+    }));
   });
   const upstreamPort = await listen(upstream);
   const portReservation = http.createServer();
@@ -71,9 +77,21 @@ test("built frontend uses the same bounded API proxy outside Vercel", { timeout:
   assert.ok(ready, `Build first with npm run build. Next failed to start: ${logs}`);
 
   await t.test("uses configured nondefault upstream, query and caller key", async () => {
-    const response = await fetch(`${base}/api/echo?check=proxy`, { headers: { "X-API-Key": "synthetic-owner-key" } });
+    const response = await fetch(`${base}/api/echo?check=proxy`, {
+      headers: {
+        "X-API-Key": "synthetic-owner-key",
+        "X-Demo-Session": "pub_testdemosession01",
+        "X-Groq-API-Key": "gsk_test_not_injected",
+      },
+    });
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { path: "/api/echo?check=proxy", key: "synthetic-owner-key", bytes: 0 });
+    assert.deepEqual(await response.json(), {
+      path: "/api/echo?check=proxy",
+      key: "synthetic-owner-key",
+      demo: "pub_testdemosession01",
+      groq: "gsk_test_not_injected",
+      bytes: 0,
+    });
   });
   await t.test("never gives anonymous requests the configured administrator key", async () => {
     const response = await fetch(`${base}/api/private`);

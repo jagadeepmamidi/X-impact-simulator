@@ -10,6 +10,8 @@ import Image from "next/image";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 const DEV_API_TOKEN = process.env.NODE_ENV === "production" ? "" : (process.env.NEXT_PUBLIC_SIM_DEV_TOKEN ?? "");
 const ACCESS_KEY_STORAGE = "x-impact-simulator-access-key";
+const DEMO_SESSION_STORAGE = "x-impact-simulator-demo-session";
+const DEMO_SESSION_RE = /^[A-Za-z0-9_-]{16,64}$/;
 const MAX_MEDIA_BYTES = 3_500_000;
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
@@ -37,19 +39,30 @@ class ApiError extends Error {
   }
 }
 
+function demoSessionId() {
+  if (typeof window === "undefined") return "";
+  const existing = sessionStorage.getItem(DEMO_SESSION_STORAGE) ?? "";
+  if (DEMO_SESSION_RE.test(existing)) return existing;
+  const value = `pub_${crypto.randomUUID().replace(/-/g, "")}`;
+  sessionStorage.setItem(DEMO_SESSION_STORAGE, value);
+  return value;
+}
+
 function apiHeaders(init?: HeadersInit) {
   const headers = new Headers(init);
-  // Production keys are entered by the operator and held only for this browser tab.
-  // The optional bundled token remains restricted to local development builds.
+  // Optional operator keys stay tab-scoped. Visitors get an automatic demo session
+  // so public runs use the server Groq key without entering credentials.
   const sessionToken = typeof window === "undefined" ? "" : sessionStorage.getItem(ACCESS_KEY_STORAGE) ?? "";
   const token = sessionToken || DEV_API_TOKEN;
   if (token) headers.set("X-API-Key", token);
+  const demo = demoSessionId();
+  if (demo) headers.set("X-Demo-Session", demo);
   return headers;
 }
 
 async function apiFetch(url: string, init?: RequestInit) {
   const response = await fetch(url, { ...init, headers: apiHeaders(init?.headers) });
-  if (response.status === 401) throw new ApiError("API access token required or invalid", 401);
+  if (response.status === 401) throw new ApiError("Request was not authorized", 401);
   if (response.status === 429) throw new ApiError("Too many requests. Wait and try again.", 429);
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
@@ -414,23 +427,28 @@ export function Simulator() {
           <a href={GITHUB_REPO} className="text-[var(--fg)] hover:underline" target="_blank" rel="noreferrer">GitHub</a>
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <input
-            value={keyInput}
-            onChange={(event) => setKeyInput(event.target.value)}
-            type="password"
-            spellCheck={false}
-            autoComplete="off"
-            aria-label="API access key"
-            placeholder="API access key"
-            className="w-36 rounded-none border border-[var(--line)] bg-white px-2 py-1 text-[12px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
-          />
-          <button type="button" disabled={loading} className="border border-[var(--line)] px-2 py-1 disabled:opacity-40" onClick={() => {
-            const value = keyInput.trim();
-            if (value) sessionStorage.setItem(ACCESS_KEY_STORAGE, value);
-            else sessionStorage.removeItem(ACCESS_KEY_STORAGE);
-            setApiKey(value); setRecentRuns([]); setHistoryError(null); setLoadId(""); setReport(null); setCompare(null);
-            setHistoryVersion((version) => version + 1);
-          }}>USE KEY</button>
+          <details className="border border-[var(--line)] bg-white px-2 py-1">
+            <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.1em]">Advanced access</summary>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input
+                value={keyInput}
+                onChange={(event) => setKeyInput(event.target.value)}
+                type="password"
+                spellCheck={false}
+                autoComplete="off"
+                aria-label="Private operator key"
+                placeholder="Private operator key"
+                className="w-44 rounded-none border border-[var(--line)] bg-white px-2 py-1 text-[12px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
+              />
+              <button type="button" disabled={loading} className="border border-[var(--line)] px-2 py-1 disabled:opacity-40" onClick={() => {
+                const value = keyInput.trim();
+                if (value) sessionStorage.setItem(ACCESS_KEY_STORAGE, value);
+                else sessionStorage.removeItem(ACCESS_KEY_STORAGE);
+                setApiKey(value); setRecentRuns([]); setHistoryError(null); setLoadId(""); setReport(null); setCompare(null);
+                setHistoryVersion((version) => version + 1);
+              }}>USE KEY</button>
+            </div>
+          </details>
           <input
             value={loadId}
             onChange={(e) => setLoadId(e.target.value)}
