@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import app.store as store
 import app.main as main
@@ -46,3 +47,38 @@ def test_list_reports_purges_expired_rows(monkeypatch, tmp_path) -> None:
     with store._connection() as conn:
         conn.execute("UPDATE runs SET created_at = ? WHERE id = ?", (expired, run_id))
     assert store.list_reports(owner_id="development", limit=20) == []
+
+
+def test_storage_status_marks_tmp_ephemeral(monkeypatch) -> None:
+    monkeypatch.setattr(store, "DB_PATH", Path("/tmp/runs.sqlite"))
+    status = store.storage_status()
+    assert status["production_ready"] is False
+    assert status["ephemeral"] is True
+    assert status["path"] == "/tmp/runs.sqlite"
+    assert status["backend"] == "sqlite"
+
+
+def test_storage_status_marks_render_disk_durable(monkeypatch) -> None:
+    monkeypatch.setattr(store, "DB_PATH", Path("/var/data/runs.sqlite"))
+    status = store.storage_status()
+    assert status["production_ready"] is True
+    assert status["ephemeral"] is False
+    assert status["path"] == "/var/data/runs.sqlite"
+
+
+def test_repo_relative_sqlite_is_not_ephemeral() -> None:
+    assert store.sqlite_path_is_ephemeral("backend/data/runs.sqlite") is False
+    assert store.sqlite_path_is_ephemeral("/var/tmp/runs.sqlite") is True
+
+
+def test_health_exposes_storage_fields() -> None:
+    limiter.reset()
+    with TestClient(main.app) as client:
+        response = client.get("/api/health")
+    limiter.reset()
+    assert response.status_code == 200
+    storage = response.json()["storage"]
+    assert "production_ready" in storage
+    assert "ephemeral" in storage
+    assert "path" in storage
+    assert storage["ephemeral"] is (not storage["production_ready"])
