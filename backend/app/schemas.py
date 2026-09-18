@@ -257,7 +257,7 @@ class OutcomeRecord(BaseModel):
     watch_time_seconds: float | None = Field(default=None, ge=0)
     observed_at: datetime | None = None
     observation_window_hours: float | None = Field(default=None, gt=0, le=8_760)
-    data_source: Literal["manual", "x_analytics_export", "api"] = "manual"
+    data_source: Literal["manual", "x_analytics_export", "api", "synthetic"] = "manual"
     note: str = Field(default="", max_length=2_000)
 
     @model_validator(mode="after")

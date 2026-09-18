@@ -1,0 +1,250 @@
+{
+  "status": "synthetic-harness-only",
+  "disclaimer": "SYNTHETIC validation of the harness/pipeline. NOT empirical calibration. Gate C is NOT complete. Posts and outcomes were authored for offline testing; they are not observed X impressions.",
+  "beachhead_niche": "tech",
+  "observation_window_hours": 24,
+  "scenario": "Small tech-niche account (~2k followers) over a consistent 24h observation window. Numbers are invented, not measured.",
+  "seed_note": "Corpus is checked in, not sampled. Backtest inference uses a deterministic seed and the heuristic path by default.",
+  "posts": [
+    {
+      "post_id": "syn-tech-01",
+      "niche": "tech",
+      "archetype": "shipping",
+      "published_at": "2026-06-03T14:12:00Z",
+      "observed_at": "2026-06-04T14:12:00Z",
+      "observation_window_hours": 24,
+      "text": "Shipped a local eval harness that scores LLM traces in 12ms p95 on a 16GB laptop. Repo + repro script in the thread. No GPU required.",
+      "synthetic_outcomes": {"impressions": 14280, "likes": 412, "replies": 47, "reposts": 88, "follows": 29, "quotes": 18, "shares": 11}
+    },
+    {
+      "post_id": "syn-tech-02",
+      "niche": "tech",
+      "archetype": "benchmark",
+      "published_at": "2026-06-08T16:40:00Z",
+      "observed_at": "2026-06-09T16:40:00Z",
+      "observation_window_hours": 24,
+      "text": "Cut cold-start from 1.8s to 210ms by pre-warming the tokenizer and pinning the vocab mmap. Before/after traces attached. Same model, same prompts.",
+      "synthetic_outcomes": {"impressions": 11840, "likes": 356, "replies": 39, "reposts": 71, "follows": 21, "quotes": 14, "shares": 8}
+    },
+    {
+      "post_id": "syn-tech-03",
+      "niche": "tech",
+      "archetype": "opensource",
+      "published_at": "2026-06-12T13:05:00Z",
+      "observed_at": "2026-06-13T13:05:00Z",
+      "observation_window_hours": 24,
+      "text": "Open-sourced the JSONL fixture loader we use for ranking-score diffs. Deterministic seeds, checked-in golden files, MIT. PRs welcome if you add a failing case first.",
+      "synthetic_outcomes": {"impressions": 9640, "likes": 287, "replies": 33, "reposts": 64, "follows": 18, "quotes": 9, "shares": 7}
+    },
+    {
+      "post_id": "syn-tech-04",
+      "niche": "tech",
+      "archetype": "postmortem",
+      "published_at": "2026-06-18T11:22:00Z",
+      "observed_at": "2026-06-19T11:22:00Z",
+      "observation_window_hours": 24,
+      "text": "Postmortem: our nightly eval silently dropped 40% of rows because a UTF-8 BOM snuck into one shard. Tests passed. The metric lie lasted 11 days. Checklist we added is in the replies.",
+      "synthetic_outcomes": {"impressions": 8750, "likes": 241, "replies": 62, "reposts": 55, "follows": 14, "quotes": 21, "shares": 6}
+    },
+    {
+      "post_id": "syn-tech-05",
+      "niche": "tech",
+      "archetype": "security",
+      "published_at": "2026-06-23T09:18:00Z",
+      "observed_at": "2026-06-24T09:18:00Z",
+      "observation_window_hours": 24,
+      "text": "CVE write-up (low): our upload path trusted the client MIME type. Magic-byte check now rejects mismatched PNG/JPEG/MP4. No known exploit in the wild. Patch in v0.4.2.",
+      "synthetic_outcomes": {"impressions": 7320, "likes": 198, "replies": 28, "reposts": 41, "follows": 11, "quotes": 8, "shares": 4}
+    },
+    {
+      "post_id": "syn-tech-06",
+      "niche": "tech",
+      "archetype": "tutorial",
+      "published_at": "2026-06-27T15:50:00Z",
+      "observed_at": "2026-06-28T15:50:00Z",
+      "observation_window_hours": 24,
+      "text": "Minimal pytest pattern for a seeded Monte Carlo: freeze numpy Generator(seed), assert p10<=p50<=p90, and compare the visualized run to median exposure—not the first run.",
+      "synthetic_outcomes": {"impressions": 6180, "likes": 176, "replies": 22, "reposts": 31, "follows": 9, "quotes": 5, "shares": 3}
+    },
+    {
+      "post_id": "syn-tech-07",
+      "niche": "tech",
+      "archetype": "question",
+      "published_at": "2026-07-02T17:05:00Z",
+      "observed_at": "2026-07-03T17:05:00Z",
+      "observation_window_hours": 24,
+      "text": "If you ship ranking weights from a public repo, do you pin the commit SHA in the scorecard or only in a comment? Genuinely curious what survives a six-month replay.",
+      "synthetic_outcomes": {"impressions": 5410, "likes": 94, "replies": 71, "reposts": 18, "follows": 7, "quotes": 12, "shares": 2}
+    },
+    {
+      "post_id": "syn-tech-08",
+      "niche": "tech",
+      "archetype": "comparison",
+      "published_at": "2026-07-07T14:33:00Z",
+      "observed_at": "2026-07-08T14:33:00Z",
+      "observation_window_hours": 24,
+      "text": "sqlite WAL vs a tiny Postgres for a single-node sim store: we kept SQLite. Replay hashes and owner isolation were cheaper than a queue. Tradeoff notes in the next post.",
+      "synthetic_outcomes": {"impressions": 4890, "likes": 132, "replies": 41, "reposts": 19, "follows": 6, "quotes": 11, "shares": 3}
+    },
+    {
+      "post_id": "syn-tech-09",
+      "niche": "tech",
+      "archetype": "rust",
+      "published_at": "2026-07-11T19:10:00Z",
+      "observed_at": "2026-07-12T19:10:00Z",
+      "observation_window_hours": 24,
+      "text": "Rewrote the trace joiner in Rust. Python stayed in charge of I/O. Throughput 4.6x on a 2.1M-row fixture; peak RSS down 31%. No unsafe. Criterion benches in /benches.",
+      "synthetic_outcomes": {"impressions": 8060, "likes": 263, "replies": 24, "reposts": 47, "follows": 16, "quotes": 7, "shares": 5}
+    },
+    {
+      "post_id": "syn-tech-10",
+      "niche": "tech",
+      "archetype": "unpopular-opinion",
+      "published_at": "2026-07-15T12:44:00Z",
+      "observed_at": "2026-07-16T12:44:00Z",
+      "observation_window_hours": 24,
+      "text": "Unpopular: leaderboards without a frozen prompt set and a disclosed seed are just vibes. If I cannot replay your eval, I do not care about your 2-point gain.",
+      "synthetic_outcomes": {"impressions": 16320, "likes": 501, "replies": 186, "reposts": 94, "follows": 22, "quotes": 67, "shares": 19}
+    },
+    {
+      "post_id": "syn-tech-11",
+      "niche": "tech",
+      "archetype": "architecture",
+      "published_at": "2026-07-20T13:28:00Z",
+      "observed_at": "2026-07-21T13:28:00Z",
+      "observation_window_hours": 24,
+      "text": "Audience sim loop: extract features → persona affinities → map onto impression priors → RankingScorer weights → candidate-slate competition → cascade. Groq never emits the headline score.",
+      "synthetic_outcomes": {"impressions": 3920, "likes": 121, "replies": 17, "reposts": 22, "follows": 8, "quotes": 4, "shares": 2}
+    },
+    {
+      "post_id": "syn-tech-12",
+      "niche": "tech",
+      "archetype": "weekend-project",
+      "published_at": "2026-07-26T18:02:00Z",
+      "observed_at": "2026-07-27T18:02:00Z",
+      "observation_window_hours": 24,
+      "text": "Weekend project: a 120-line watcher that fails CI if any committed scorecard still says empirically calibrated. Ugly. Effective. gist in replies.",
+      "synthetic_outcomes": {"impressions": 2740, "likes": 88, "replies": 14, "reposts": 11, "follows": 4, "quotes": 3, "shares": 1}
+    },
+    {
+      "post_id": "syn-tech-13",
+      "niche": "tech",
+      "archetype": "hiring",
+      "published_at": "2026-07-30T15:16:00Z",
+      "observed_at": "2026-07-31T15:16:00Z",
+      "observation_window_hours": 24,
+      "text": "Looking for one contractor to review our replay hashes and SQLite snapshot contract. Paid, small, public write-up at the end. DM a failing test, not a resume.",
+      "synthetic_outcomes": {"impressions": 2210, "likes": 41, "replies": 19, "reposts": 6, "follows": 3, "quotes": 2, "shares": 1}
+    },
+    {
+      "post_id": "syn-tech-14",
+      "niche": "tech",
+      "archetype": "changelog",
+      "published_at": "2026-08-04T10:07:00Z",
+      "observed_at": "2026-08-05T10:07:00Z",
+      "observation_window_hours": 24,
+      "text": "v0.5.0: independent action marginals, stored-probability replay, confidence stays 0.0 until a real holdout exists. Full notes in CHANGELOG. No new niches.",
+      "synthetic_outcomes": {"impressions": 1980, "likes": 67, "replies": 8, "reposts": 9, "follows": 5, "quotes": 1, "shares": 1}
+    },
+    {
+      "post_id": "syn-tech-15",
+      "niche": "tech",
+      "archetype": "tool-reco",
+      "published_at": "2026-08-09T16:21:00Z",
+      "observed_at": "2026-08-10T16:21:00Z",
+      "observation_window_hours": 24,
+      "text": "If you only adopt one eval habit this month: dump the exact command line, seed, and SHA of the fixture into the report JSON. Future you will not remember the flags.",
+      "synthetic_outcomes": {"impressions": 4560, "likes": 154, "replies": 16, "reposts": 27, "follows": 8, "quotes": 6, "shares": 3}
+    },
+    {
+      "post_id": "syn-tech-16",
+      "niche": "tech",
+      "archetype": "vague",
+      "published_at": "2026-08-13T20:45:00Z",
+      "observed_at": "2026-08-14T20:45:00Z",
+      "observation_window_hours": 24,
+      "text": "Been thinking a lot about AI tooling lately. The space is moving so fast. More thoughts soon.",
+      "synthetic_outcomes": {"impressions": 860, "likes": 11, "replies": 2, "reposts": 0, "follows": 0, "quotes": 0, "shares": 0}
+    },
+    {
+      "post_id": "syn-tech-17",
+      "niche": "tech",
+      "archetype": "low-info",
+      "published_at": "2026-08-14T07:03:00Z",
+      "observed_at": "2026-08-15T07:03:00Z",
+      "observation_window_hours": 24,
+      "text": "gm builders",
+      "synthetic_outcomes": {"impressions": 240, "likes": 6, "replies": 1, "reposts": 0, "follows": 0, "quotes": 0, "shares": 0}
+    },
+    {
+      "post_id": "syn-tech-18",
+      "niche": "tech",
+      "archetype": "promo-hard",
+      "published_at": "2026-08-18T13:55:00Z",
+      "observed_at": "2026-08-19T13:55:00Z",
+      "observation_window_hours": 24,
+      "text": "Buy now! Limited discount on our Pro waitlist. Subscribe and follow for the promo link. Sale ends tonight!!!",
+      "synthetic_outcomes": {"impressions": 410, "likes": 4, "replies": 3, "reposts": 0, "follows": 1, "quotes": 0, "shares": 0}
+    },
+    {
+      "post_id": "syn-tech-19",
+      "niche": "tech",
+      "archetype": "promo-soft",
+      "published_at": "2026-08-21T15:30:00Z",
+      "observed_at": "2026-08-22T15:30:00Z",
+      "observation_window_hours": 24,
+      "text": "We just opened the waitlist for hosted evals. Sign up, subscribe for launch codes, and follow for discount drops. Link in bio.",
+      "synthetic_outcomes": {"impressions": 1280, "likes": 19, "replies": 7, "reposts": 2, "follows": 2, "quotes": 1, "shares": 1}
+    },
+    {
+      "post_id": "syn-tech-20",
+      "niche": "tech",
+      "archetype": "thread-educational",
+      "published_at": "2026-08-25T14:08:00Z",
+      "observed_at": "2026-08-26T14:08:00Z",
+      "observation_window_hours": 24,
+      "text": "A ranking score is not a forecast. Public default weights scale predicted action probabilities, then apply an offset and an out-of-network factor. They do not know your followers, your history, or tonight's experiments. Treat the number as a comparative scenario.",
+      "synthetic_outcomes": {"impressions": 3370, "likes": 109, "replies": 21, "reposts": 16, "follows": 7, "quotes": 5, "shares": 2}
+    },
+    {
+      "post_id": "syn-tech-21",
+      "niche": "tech",
+      "archetype": "hot-take",
+      "published_at": "2026-08-29T21:17:00Z",
+      "observed_at": "2026-08-30T21:17:00Z",
+      "observation_window_hours": 24,
+      "text": "Hot take: if your product needs a 70B judge to tell two hooks apart, you do not have an eval. You have a mood ring with extra latency.",
+      "synthetic_outcomes": {"impressions": 12110, "likes": 388, "replies": 142, "reposts": 76, "follows": 15, "quotes": 44, "shares": 13}
+    },
+    {
+      "post_id": "syn-tech-22",
+      "niche": "tech",
+      "archetype": "repro-failure",
+      "published_at": "2026-09-03T12:26:00Z",
+      "observed_at": "2026-09-04T12:26:00Z",
+      "observation_window_hours": 24,
+      "text": "Tried to reproduce a viral '12x faster RAG' gist. Their benchmark used cached embeddings and counted the cache as inference. Uncached it was 0.9x. Always print cache hit rate.",
+      "synthetic_outcomes": {"impressions": 10140, "likes": 319, "replies": 54, "reposts": 61, "follows": 13, "quotes": 22, "shares": 7}
+    },
+    {
+      "post_id": "syn-tech-23",
+      "niche": "tech",
+      "archetype": "off-hours-bland",
+      "published_at": "2026-09-07T03:41:00Z",
+      "observed_at": "2026-09-08T03:41:00Z",
+      "observation_window_hours": 24,
+      "text": "Update: still iterating on the dashboard. Small fixes this week.",
+      "synthetic_outcomes": {"impressions": 520, "likes": 8, "replies": 0, "reposts": 0, "follows": 0, "quotes": 0, "shares": 0}
+    },
+    {
+      "post_id": "syn-tech-24",
+      "niche": "tech",
+      "archetype": "concrete-tip",
+      "published_at": "2026-09-11T14:59:00Z",
+      "observed_at": "2026-09-12T14:59:00Z",
+      "observation_window_hours": 24,
+      "text": "Pin your x-algorithm weights to a 40-char SHA, not `main`. We froze d0cef2f943084ee0d4310378031c9c2c37d67f12 because later public main diverged. Replay broke the day we didn't.",
+      "synthetic_outcomes": {"impressions": 5680, "likes": 172, "replies": 19, "reposts": 29, "follows": 10, "quotes": 6, "shares": 4}
+    }
+  ]
+}

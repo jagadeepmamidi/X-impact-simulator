@@ -98,7 +98,7 @@ The checked-in Render blueprint is the **free ephemeral demo**: `plan: free`, `S
 
 For Vercel, keep the 4 MB request limit; the proxy route requests a 120-second function duration to cover its default 90-second upstream timeout. Use a plan/settings that support that duration (or lower `API_PROXY_TIMEOUT_SECONDS` if Fluid Compute is disabled). Provider timeout/retry settings bound individual calls; stopping a browser request does not cancel those calls. Real provider latency, budgets, live media, backup/restore and hosted smoke checks remain deployment acceptance work.
 
-SOP deltas and Gate B→C scope: [`research/SOP_PILOT_ADDENDUM.md`](research/SOP_PILOT_ADDENDUM.md). Ranking weight pin: [`research/x-scoring-notes.md`](research/x-scoring-notes.md).
+SOP deltas and Gate B→C scope: [`research/SOP_PILOT_ADDENDUM.md`](research/SOP_PILOT_ADDENDUM.md). Ranking weight pin: [`research/x-scoring-notes.md`](research/x-scoring-notes.md). Synthetic Gate C harness (**not** empirical calibration): [`research/GATE_C_SYNTHETIC.md`](research/GATE_C_SYNTHETIC.md).
 
 ## API
 
@@ -120,7 +120,7 @@ Private operators can still send their key as `X-API-Key`. A key from `SIM_ACCES
 
 ## Checks
 
-From `backend`, run `python -m pytest -q`. From `frontend`, run `npm run lint`, `npm run build`, then `npm run test:proxy`. The proxy test starts only local fixture servers and checks the actual built handler, caller credentials, request size, timeouts and unavailable-backend errors. GitHub Actions runs these same checks. Browser regression steps and accepted SOP scope are recorded in `SOP_REVIEW_PLAN.md` and `research/SOP_PILOT_ADDENDUM.md`.
+From `backend`, run `python -m pytest -q`. The suite includes an offline synthetic Gate C backtest (`python -m app.gate_c_synthetic`) that needs no Groq key; it does **not** complete empirical Gate C. From `frontend`, run `npm run lint`, `npm run build`, then `npm run test:proxy`. The proxy test starts only local fixture servers and checks the actual built handler, caller credentials, request size, timeouts and unavailable-backend errors. GitHub Actions runs these same checks. Browser regression steps and accepted SOP scope are recorded in `SOP_REVIEW_PLAN.md` and `research/SOP_PILOT_ADDENDUM.md`.
 
 ## Disclaimer
 

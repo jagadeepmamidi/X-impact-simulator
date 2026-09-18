@@ -191,7 +191,7 @@ export type OutcomeRecord = {
   follows?: number | null;
   observed_at?: string | null;
   observation_window_hours?: number | null;
-  data_source?: "manual" | "x_analytics_export" | "api";
+  data_source?: "manual" | "x_analytics_export" | "api" | "synthetic";
   note?: string;
 };
 
