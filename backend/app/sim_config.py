@@ -7,8 +7,14 @@ CALIBRATION_VERSION = "affinity-prior-map-v2"
 CONFIG_VERSION = "sim-config-v4"
 PROMPT_VERSION = "persona-reactions-v2"
 HEADS_VERSION = "blueprint-tfidf-cluster-aware-favorite-retweet-v2"
-WEIGHTS_TREE = "x-algorithm-main-param-defaults-sync-2026-08-12"
-WEIGHTS_SOURCE_URL = "https://github.com/xai-org/x-algorithm/blob/main/home-mixer/params/param.rs"
+# Immutable xai-org/x-algorithm revision whose param.rs matches in-repo X_WEIGHTS.
+# Last public main commit that still carried the 2026-08-12 feature-switch sync.
+WEIGHTS_COMMIT_SHA = "d0cef2f943084ee0d4310378031c9c2c37d67f12"
+WEIGHTS_TREE = WEIGHTS_COMMIT_SHA
+WEIGHTS_SOURCE_URL = (
+    "https://github.com/xai-org/x-algorithm/blob/"
+    f"{WEIGHTS_COMMIT_SHA}/home-mixer/params/param.rs"
+)
 RANKING_POLICY_VERSION = "candidate-slate-v2"
 PROBABILITY_SEMANTICS = "conditional-on-impression multilabel action probabilities"
 

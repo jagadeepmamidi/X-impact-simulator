@@ -56,6 +56,21 @@ def test_favorite_weight_matches_param_rs() -> None:
     assert abs(ranking_score([r], in_network=True) - 0.501) < 1e-9
 
 
+def test_weights_pin_is_immutable_upstream_sha() -> None:
+    from app.scoring import X_WEIGHTS
+    from app.sim_config import WEIGHTS_COMMIT_SHA, WEIGHTS_SOURCE_URL, WEIGHTS_TREE
+
+    assert WEIGHTS_TREE == WEIGHTS_COMMIT_SHA
+    assert len(WEIGHTS_COMMIT_SHA) == 40
+    int(WEIGHTS_COMMIT_SHA, 16)
+    assert WEIGHTS_COMMIT_SHA in WEIGHTS_SOURCE_URL
+    assert "blob/main/" not in WEIGHTS_SOURCE_URL
+    # Product weights stay on the pinned tree; later main is documented, not adopted.
+    assert X_WEIGHTS["video_open"] == 0.05
+    assert X_WEIGHTS["vqv"] == 0.05
+    assert X_WEIGHTS["dwell"] == 0.0
+
+
 def test_oon_multiplies_after_offset() -> None:
     r = _reaction("a", 1.0, reply_probability=0, repost_probability=0, dwell_probability=0, follow_probability=0, negative_feedback_probability=0)
     inn = ranking_score([r], in_network=True)
