@@ -1,7 +1,21 @@
 # X ranking defaults used by the simulator
 Repo: https://github.com/xai-org/x-algorithm
-Source checked: public `main` on 2026-09-04
-`param.rs` upstream mirror comment: last sync `2026-08-12`
+**Pinned commit:** [`d0cef2f943084ee0d4310378031c9c2c37d67f12`](https://github.com/xai-org/x-algorithm/commit/d0cef2f943084ee0d4310378031c9c2c37d67f12) (2026-08-20)
+
+That is the last public `main` revision whose `home-mixer/params/param.rs` still carries the feature-switch mirror comment `last sync 2026-08-12T04:09:22Z` **and** matches the weight table shipped in this app (`backend/app/scoring.py`).
+
+Do **not** treat a date-only check of public `main` as the pin. Checking `main` on 2026-09-04 (`902a06fd616ed815f660e5546d16d492fa1ca825`) already diverged from these product weights. This app **keeps the current table** (replay hashes bind the numeric weights). Provenance is the matching SHA, not drifting `main`.
+
+| Head | This app (pinned SHA) | 2026-09-04 `main` |
+| --- | ---: | ---: |
+| video_open | 0.05 | 0.07 |
+| vqv | 0.05 | 0.0 |
+| dwell | 0.0 | 0.05 |
+
+All other documented RankingScorer heads in the table below matched both trees when compared.
+
+Source file: https://github.com/xai-org/x-algorithm/blob/d0cef2f943084ee0d4310378031c9c2c37d67f12/home-mixer/params/param.rs  
+Offset constant: `NEGATIVE_SCORES_OFFSET = 0.001` in `home-mixer/params/config.rs` at the same commit.
 
 This app copies **RankingScorer weighted mode** only:
 
@@ -13,7 +27,7 @@ Personas emit the Phoenix heads RankingScorer multiplies. Python owns the sum. G
 
 Optional BluePrint TFIDF heads (`training/artifacts/phoenix_heads.joblib`) first infer the dataset content cluster, then apply persona-preserving log-odds lifts to `like_probability` (favorite, 40%) and `repost_probability` (retweet, 25%). Reply / quote / follow / block stay Groq or heuristic.
 
-## Weights (`home-mixer/params/param.rs`)
+## Weights (`home-mixer/params/param.rs` at the pinned SHA)
 
 Weights multiply **predicted probabilities**, not counts.
 
@@ -49,7 +63,7 @@ Weights multiply **predicted probabilities**, not counts.
 - `ValueModelMode` = `weighted` (not dwell-regret)
 - `OonWeightFactor` = `0.75`
 - `NEGATIVE_SCORES_OFFSET` = `0.001` (`home-mixer/params/config.rs`)
-- `MultiplierPreOffset` = `false` so OON applies after offset
+- `MultiplierPreOffset` = `false` so OON applies after offset (this app’s scoring path; the flag name appears in later upstream `param.rs` revisions)
 - `PostUnexploredWeightInNetworkOnly` = `true`
 
 UI 0-100 is a documented sigmoid of the prior-mapped raw ranking score (`affinity-prior-map-v2`), not `raw / 6` and not an X production percentile. Monte Carlo p10/p50/p90 are the **final-round scores of complete cascade runs**; the displayed graph is the run nearest the median exposure/score.
@@ -63,4 +77,3 @@ RankingScorer weights multiply **P(action | impression)**. LLM and heuristic hea
 `p0` values are research priors, **not X telemetry and not empirical calibration**. Both graph event sampling and scoring now use the same prior-mapped probability stream. Noise is applied in log-odds space so rare events are not overwhelmed by additive jitter. Compatible actions are sampled independently rather than forced into one categorical action.
 
 Simulation knobs live in `SimulationConfig` (`sim-config-v4`): share fanout, candidate-pool size/top-k, synthetic competitor distributions, explicit author-network priors, network/stage adjustments, exposure budget, log-odds noise, and stopping rules. Every saved run records this configuration and a verified hash manifest binding the report, reactions, input, personas, weights, and model metadata used for compatibility-checked replay.
-

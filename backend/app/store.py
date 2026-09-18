@@ -426,10 +426,24 @@ def load_outcome(run_id: str, owner_id: str | None = None) -> OutcomeRecord | No
         return None
 
 
+def sqlite_path_is_ephemeral(path: Path | str) -> bool:
+    """True when the SQLite file sits on a tmpfs-style path that Render/OS wipe.
+
+    Durable local (`backend/data/runs.sqlite`) and the Render disk mount
+    (`/var/data/runs.sqlite`) are not ephemeral. `/tmp` on free Render is.
+    """
+    posix = Path(path).as_posix().replace("\\", "/")
+    prefixes = ("/tmp", "/var/tmp", "/dev/shm", "/private/tmp")
+    return any(posix == prefix or posix.startswith(prefix + "/") for prefix in prefixes)
+
+
 def storage_status() -> dict[str, str | bool | int]:
+    ephemeral = sqlite_path_is_ephemeral(DB_PATH)
     return {
         "backend": "sqlite",
-        "production_ready": False,
-        "scope": "single-node development",
+        "production_ready": not ephemeral,
+        "ephemeral": ephemeral,
+        "path": str(DB_PATH),
+        "scope": "single-node sqlite",
         "retention_days": settings.run_retention_days,
     }

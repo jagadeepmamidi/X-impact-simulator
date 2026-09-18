@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { NICHES, NICHE_COPY, type CompareReport, type ImpactReport, type Niche, type OutcomeRecord, type RecentRun } from "@/lib/types";
 import { GITHUB_REPO } from "@/lib/repo";
 import { SpreadView } from "./spread";
+import { STORAGE_LOSS_COPY, useEphemeralStorageRisk } from "./banner";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -104,6 +105,7 @@ export function Simulator() {
   const [recentRuns, setRecentRuns] = useState<RecentRun[]>([]);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const ephemeralStorage = useEphemeralStorageRisk();
 
   useEffect(() => {
     let cancelled = false;
@@ -484,6 +486,11 @@ export function Simulator() {
              RE-RUN SNAPSHOT
           </button>
         </div>
+        {ephemeralStorage ? (
+          <p role="note" className="w-full text-[11px] leading-4 text-[var(--danger)]">
+            Save / History: {STORAGE_LOSS_COPY}
+          </p>
+        ) : null}
         {historyError ? <p role="status" className="w-full">Recent runs: {historyError}</p> : null}
       </footer>
     </div>

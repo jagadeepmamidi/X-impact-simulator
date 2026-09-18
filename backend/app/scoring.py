@@ -3,8 +3,10 @@
 from app.calibration import CALIBRATION_NOTE, to_ui_score as calibrated_ui_score
 from app.schemas import PersonaReaction
 
-# Public default values in param.rs, whose upstream comment says its feature-switch
-# mirror was last synced 2026-08-12. Runtime experiment overrides are not public.
+# Public default values in param.rs at xai-org/x-algorithm
+# d0cef2f943084ee0d4310378031c9c2c37d67f12 (feature-switch mirror comment:
+# last sync 2026-08-12). Later public main diverges; product weights are unchanged.
+# Runtime experiment overrides are not public.
 X_WEIGHTS = {
     "favorite": 0.5,
     "reply": 5.0,
@@ -40,7 +42,8 @@ ENABLE_MULTIPLICATIVE_POST_UNEXPLORED = False
 WEIGHTS_NOTE = (
     "Score = RankingScorer weighted mode: sum(w_i * P(action_i)), then +0.001 "
     "offset, then OON x 0.75. Weights from xai-org/x-algorithm "
-    "home-mixer/params/param.rs (upstream defaults sync 2026-08-12). Weights scale "
+    "home-mixer/params/param.rs at commit d0cef2f943084ee0d4310378031c9c2c37d67f12 "
+    "(2026-08-12 feature-switch sync). Weights scale "
     "predicted probabilities, not raw counts. VQV, profile-click, click-dwell, active-seconds, "
     "author diversity/boosts, VMRanker, and visibility filters are not modeled. Not Phoenix, "
     "not the live graph, and runtime experiment overrides are unknown. "

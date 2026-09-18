@@ -75,8 +75,8 @@ Review the generated Nemotron files before promoting them into `backend/data/ove
 | `SIM_ACCESS_KEYS_JSON` | backend | JSON map of owner IDs to strong keys; production UI users enter their own key and can access only their runs |
 | `TRUSTED_PROXY_CIDRS` | backend | Proxy ranges allowed to supply forwarding headers for rate limiting |
 | `RUN_RETENTION_DAYS` | backend | Required and positive in production |
-| `ALLOW_SQLITE_IN_PRODUCTION` | backend | Explicit acknowledgement for a single-node SQLite deployment; free Render storage is ephemeral |
-| `SQLITE_PATH` | backend | Database file; absolute path or relative to repository root, default `backend/data/runs.sqlite` |
+| `ALLOW_SQLITE_IN_PRODUCTION` | backend | Explicit acknowledgement for single-node SQLite. Durable pilot: paid Render + disk. Free `/tmp` is ephemeral. |
+| `SQLITE_PATH` | backend | Database file; absolute path or relative to repository root. Local default `backend/data/runs.sqlite`. Durable Render: `/var/data/runs.sqlite`. |
 | `SIM_MAX_CONCURRENT_RUNS` | backend | Maximum active analyses per process, default 2; excess requests receive 503 with `Retry-After` |
 | `NEXT_PUBLIC_API_URL` | frontend | Optional direct API override; leave empty to use the same-origin proxy |
 | `NEXT_PUBLIC_SITE_URL` | frontend | Canonical site URL |
@@ -92,9 +92,13 @@ Copy `.env.example`. Never commit `.env`.
 - **API** — Render web service, root `backend`, start `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, health `/api/health`. Production startup requires `APP_ENV=production`, `SIM_PUBLIC_DEMO=true` and/or a strong credential in `SIM_ACCESS_KEYS_JSON` or `SIM_API_KEY`, positive retention, and an explicit single-node SQLite acknowledgement. Public demo visitors use the server Groq key; reserve `SIM_API_KEY` for administration.
 - **UI** — Vercel project, root `frontend`; set server-only `BACKEND_API_URL` and the same `MAX_REQUEST_BYTES` as FastAPI. Do **not** set `SIM_API_KEY` or `GROQ_API_KEY` on Vercel. Leave `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SIM_DEV_TOKEN` unset; public demo visitors need no operator key when `SIM_PUBLIC_DEMO` is enabled on the backend. Private operator keys stay under Advanced access and are forwarded only to the backend.
 
-The checked-in Render blueprint specifies a **free stateless service**, production mode, 30-day retention, and `SQLITE_PATH=/tmp/runs.sqlite`. Render free services cannot attach persistent disks, so saved runs and outcomes are lost when the service restarts or redeploys; use this only for demos and short pilots. Supply per-owner keys and the frontend origin during setup. For durable storage, change the service to a paid plan, attach a persistent disk, point `SQLITE_PATH` at it, keep one service instance, and back up the database using SQLite's backup API before release. Existing deployments must explicitly migrate their current database before pointing at a new empty disk.
+The checked-in Render blueprint is the **durable pilot**: paid **Starter** plan, persistent disk mounted at `/var/data`, `SQLITE_PATH=/var/data/runs.sqlite`, production mode, 30-day retention, public demo on, credential `sync: false`. Disks are single-instance and skip zero-downtime deploys. After merge, the owner must upgrade the live service if it is still on free `/tmp` — checklist in [`research/RENDER_OWNER_RUNBOOK.md`](research/RENDER_OWNER_RUNBOOK.md). Confirm `GET /api/health` → `storage.production_ready: true` and `storage.path: /var/data/runs.sqlite`. The UI loss banner clears when that flag is true.
+
+**Ephemeral demo only (not the default):** free Render cannot attach a disk. `SQLITE_PATH=/tmp/runs.sqlite` is wiped on restart, redeploy, and free-instance spin-down. Do not use that path for the durable pilot. Existing `/tmp` data is not migrated automatically onto a new empty disk.
 
 For Vercel, keep the 4 MB request limit; the proxy route requests a 120-second function duration to cover its default 90-second upstream timeout. Use a plan/settings that support that duration (or lower `API_PROXY_TIMEOUT_SECONDS` if Fluid Compute is disabled). Provider timeout/retry settings bound individual calls; stopping a browser request does not cancel those calls. Real provider latency, budgets, live media, backup/restore and hosted smoke checks remain deployment acceptance work.
+
+SOP deltas and Gate B→C scope: [`research/SOP_PILOT_ADDENDUM.md`](research/SOP_PILOT_ADDENDUM.md). Ranking weight pin: [`research/x-scoring-notes.md`](research/x-scoring-notes.md).
 
 ## API
 
@@ -104,7 +108,7 @@ Private operators can still send their key as `X-API-Key`. A key from `SIM_ACCES
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `GET` | `/api/health` | Liveness |
+| `GET` | `/api/health` | Liveness; includes `storage.production_ready`, `storage.ephemeral`, `storage.path` |
 | `POST` | `/api/simulate` | Multipart: `niche`, `text`, optional media |
 | `POST` | `/api/compare` | `text_a` + `text_b` |
 | `GET` | `/api/simulations?limit=20` | Recent owner-visible run summaries; limit 1–100 |
@@ -116,7 +120,7 @@ Private operators can still send their key as `X-API-Key`. A key from `SIM_ACCES
 
 ## Checks
 
-From `backend`, run `python -m pytest -q`. From `frontend`, run `npm run lint`, `npm run build`, then `npm run test:proxy`. The proxy test starts only local fixture servers and checks the actual built handler, caller credentials, request size, timeouts and unavailable-backend errors. GitHub Actions runs these same checks. Browser regression steps and accepted SOP scope are recorded in `SOP_REVIEW_PLAN.md`.
+From `backend`, run `python -m pytest -q`. From `frontend`, run `npm run lint`, `npm run build`, then `npm run test:proxy`. The proxy test starts only local fixture servers and checks the actual built handler, caller credentials, request size, timeouts and unavailable-backend errors. GitHub Actions runs these same checks. Browser regression steps and accepted SOP scope are recorded in `SOP_REVIEW_PLAN.md` and `research/SOP_PILOT_ADDENDUM.md`.
 
 ## Disclaimer
 

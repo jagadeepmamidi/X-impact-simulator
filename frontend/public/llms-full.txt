@@ -8,7 +8,7 @@
 
 The headline impact score blends 35% equal-profile prior with 65% median population/ranking simulation score. This lets sampled prevalence, candidate competition, network status, and cascade path affect the result while retaining a lower-variance prior anchor. It is not empirically calibrated.
 
-Source checked: xai-org/x-algorithm public main on 2026-09-04; param.rs says its defaults mirror was synced 2026-08-12. NEGATIVE_SCORES_OFFSET = 0.001. Affinities are mapped through assumed impression-level priors before both scoring and event sampling. UI 0-100 is a sigmoid of that prior-mapped raw score, not clamp(raw / 6). p10–p90 are final-cascade Monte Carlo scores; the shown graph is the run nearest median exposure/score.
+Pinned xai-org/x-algorithm commit d0cef2f943084ee0d4310378031c9c2c37d67f12 (param.rs last sync 2026-08-12; later public main diverges — product weights unchanged). NEGATIVE_SCORES_OFFSET = 0.001. Affinities are mapped through assumed impression-level priors before both scoring and event sampling. UI 0-100 is a sigmoid of that prior-mapped raw score, not clamp(raw / 6). p10–p90 are final-cascade Monte Carlo scores; the shown graph is the run nearest median exposure/score.
 
 BluePrint training labels favorite, reply, retweet, quote, follow_author, and block_author with actor-grouped evaluation and a text-inferred cluster feature. Runtime uses only validated favorite and retweet heads as persona-preserving content lifts; share, dwell, click, mute, and report stay heuristic/Groq until labeled.
 
