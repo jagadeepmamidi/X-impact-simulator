@@ -75,8 +75,8 @@ Review the generated Nemotron files before promoting them into `backend/data/ove
 | `SIM_ACCESS_KEYS_JSON` | backend | JSON map of owner IDs to strong keys; production UI users enter their own key and can access only their runs |
 | `TRUSTED_PROXY_CIDRS` | backend | Proxy ranges allowed to supply forwarding headers for rate limiting |
 | `RUN_RETENTION_DAYS` | backend | Required and positive in production |
-| `ALLOW_SQLITE_IN_PRODUCTION` | backend | Explicit acknowledgement for single-node SQLite. Durable pilot: paid Render + disk. Free `/tmp` is ephemeral. |
-| `SQLITE_PATH` | backend | Database file; absolute path or relative to repository root. Local default `backend/data/runs.sqlite`. Durable Render: `/var/data/runs.sqlite`. |
+| `ALLOW_SQLITE_IN_PRODUCTION` | backend | Explicit acknowledgement for single-node SQLite. Hosted free Render uses ephemeral `/tmp`. Paid disk is optional later. |
+| `SQLITE_PATH` | backend | Database file; absolute path or relative to repository root. Local default `backend/data/runs.sqlite`. Hosted free Render: `/tmp/runs.sqlite`. |
 | `SIM_MAX_CONCURRENT_RUNS` | backend | Maximum active analyses per process, default 2; excess requests receive 503 with `Retry-After` |
 | `NEXT_PUBLIC_API_URL` | frontend | Optional direct API override; leave empty to use the same-origin proxy |
 | `NEXT_PUBLIC_SITE_URL` | frontend | Canonical site URL |
@@ -92,9 +92,9 @@ Copy `.env.example`. Never commit `.env`.
 - **API** — Render web service, root `backend`, start `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, health `/api/health`. Production startup requires `APP_ENV=production`, `SIM_PUBLIC_DEMO=true` and/or a strong credential in `SIM_ACCESS_KEYS_JSON` or `SIM_API_KEY`, positive retention, and an explicit single-node SQLite acknowledgement. Public demo visitors use the server Groq key; reserve `SIM_API_KEY` for administration.
 - **UI** — Vercel project, root `frontend`; set server-only `BACKEND_API_URL` and the same `MAX_REQUEST_BYTES` as FastAPI. Do **not** set `SIM_API_KEY` or `GROQ_API_KEY` on Vercel. Leave `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SIM_DEV_TOKEN` unset; public demo visitors need no operator key when `SIM_PUBLIC_DEMO` is enabled on the backend. Private operator keys stay under Advanced access and are forwarded only to the backend.
 
-The checked-in Render blueprint is the **durable pilot**: paid **Starter** plan, persistent disk mounted at `/var/data`, `SQLITE_PATH=/var/data/runs.sqlite`, production mode, 30-day retention, public demo on, credential `sync: false`. Disks are single-instance and skip zero-downtime deploys. After merge, the owner must upgrade the live service if it is still on free `/tmp` — checklist in [`research/RENDER_OWNER_RUNBOOK.md`](research/RENDER_OWNER_RUNBOOK.md). Confirm `GET /api/health` → `storage.production_ready: true` and `storage.path: /var/data/runs.sqlite`. The UI loss banner clears when that flag is true.
+The checked-in Render blueprint is the **free ephemeral demo**: `plan: free`, `SQLITE_PATH=/tmp/runs.sqlite`, no persistent disk, production mode, 30-day retention, public demo on, credential `sync: false`. Free instances cannot attach a disk and spin down after inactivity; `/tmp` is wiped on restart, redeploy, and spin-down. `GET /api/health` reports `storage.production_ready: false` on this path, so the UI loss banner stays. Details: [`research/RENDER_OWNER_RUNBOOK.md`](research/RENDER_OWNER_RUNBOOK.md).
 
-**Ephemeral demo only (not the default):** free Render cannot attach a disk. `SQLITE_PATH=/tmp/runs.sqlite` is wiped on restart, redeploy, and free-instance spin-down. Do not use that path for the durable pilot. Existing `/tmp` data is not migrated automatically onto a new empty disk.
+**Optional later (not the default):** paid Starter (or higher) + disk at `/var/data` + `SQLITE_PATH=/var/data/runs.sqlite`. Disks are single-instance and skip zero-downtime deploys. Existing `/tmp` data is not migrated automatically. Keep that path out of `render.yaml` while staying on free — Blueprint sync would push Starter/disk.
 
 For Vercel, keep the 4 MB request limit; the proxy route requests a 120-second function duration to cover its default 90-second upstream timeout. Use a plan/settings that support that duration (or lower `API_PROXY_TIMEOUT_SECONDS` if Fluid Compute is disabled). Provider timeout/retry settings bound individual calls; stopping a browser request does not cancel those calls. Real provider latency, budgets, live media, backup/restore and hosted smoke checks remain deployment acceptance work.
 
