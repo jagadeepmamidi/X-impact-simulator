@@ -15,7 +15,9 @@ This addendum’s original companion PR covered:
 
 **Decision change:** the owner stays on **free Render only**. The checked-in blueprint is `plan: free` + `SQLITE_PATH=/tmp/runs.sqlite` (no `disk:` block). The loss banner stays until durable storage exists. The paid+disk checklist remains in the owner runbook as **optional later**. Durable Gate B is not claimed complete.
 
-**After this (owner follow-up, not in this sprint):** Gate C backtests using the owner’s ≥20 historical posts. No claim that Gate C or D is complete.
+**Synthetic Gate C harness (this follow-up):** `research/GATE_C_SYNTHETIC.md` — ≥20 **authored** tech-niche posts run through the existing simulator offline. That is **harness/pipeline validation only**. It is **not** empirical calibration and **does not** complete Gate C.
+
+**Still blocked (owner, real outcomes):** consented historical posts with a consistent observation window. Real impressions were not available, so they remain deferred. No claim that Gate C or D is complete.
 
 ## Accepted permanent deltas vs original SOP
 
@@ -38,7 +40,7 @@ Anonymous demo sessions consume the server Groq quota within `SIM_PUBLIC_RUNS_PE
 - **Not empirically calibrated.** Priors are research assumptions; Monte Carlo p10–p90 and “Run stability” measure simulator randomness only.
 - **Not X production.** RankingScorer public defaults only — not Phoenix, Thunder, SimClusters retrieval, VMRanker, visibility filters, author diversity, or runtime experiments.
 - **Not a virality guarantee** and not a live X feed.
-- **Not Gate C complete** until the owner backtest exists. **Not Gate D.**
+- **Not Gate C complete.** A synthetic harness exists (`research/GATE_C_SYNTHETIC.md`); empirical Gate C is still blocked pending real observed outcomes. **Not Gate D.**
 - **Not durable Gate B.** Live SQLite is free `/tmp` until an optional paid disk is attached.
 
 ## Storage pointer

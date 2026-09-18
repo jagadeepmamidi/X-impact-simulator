@@ -10,6 +10,7 @@ Retrieved 2026-09-02. Pin these IDs before any training run. No live X feed is u
 | Salesforce/RealUserSim | https://huggingface.co/datasets/Salesforce/RealUserSim | ODC-BY | Communication-style eval | Optional; not engagement ground truth |
 | Kaggle X engagement | — | TBD | Calibration | Deferred until provenance/license review |
 | Creator opt-in analytics | — | User consent | Long-term calibration | Not in this phase |
+| In-repo synthetic Gate C corpus | `research/gate_c_synthetic/synthetic_posts.json` | Research fixture (not X data) | Offline harness/pipeline backtest | **Synthetic only** — not empirical calibration; Gate C still blocked |
 
 SIMPACT paper (BluePrint methodology): https://arxiv.org/abs/2510.02343
 

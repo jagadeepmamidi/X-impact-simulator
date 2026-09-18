@@ -42,4 +42,4 @@ For real backups, copy a consistent SQLite file with the **SQLite backup API** (
 
 ## Out of scope here
 
-Gate C evidence (owner ≥20 historical posts, usefulness study) and public beta ops (monitoring, cost alerts, rollback playbook) are **not** part of this setup. Durable Gate B is deferred until a paid disk is actually attached.
+Gate C **empirical** evidence (owner ≥20 historical posts with real impressions, usefulness study) and public beta ops (monitoring, cost alerts, rollback playbook) are **not** part of this setup. A **synthetic** Gate C harness (not calibration) lives in `research/GATE_C_SYNTHETIC.md`. Durable Gate B is deferred until a paid disk is actually attached.

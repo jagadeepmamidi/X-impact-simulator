@@ -1,0 +1,1248 @@
+{
+  "status": "synthetic-harness-only",
+  "gate_c_empirical": "blocked",
+  "disclaimer": "SYNTHETIC validation of the harness/pipeline. NOT empirical calibration. Gate C is NOT complete. These posts and outcomes were authored for offline testing; they are not observed X impressions.",
+  "claims": {
+    "empirically_calibrated": false,
+    "gate_c_complete": false,
+    "public_beta": false,
+    "unlocks_calibrated_or_public_beta_claims": false
+  },
+  "generated_at": "2026-09-18T11:26:16Z",
+  "corpus": {
+    "path": "research/gate_c_synthetic/synthetic_posts.json",
+    "n_posts": 24,
+    "beachhead_niche": "tech",
+    "data_kind": "synthetic"
+  },
+  "run": {
+    "seed": 42,
+    "population": 40,
+    "boost": 6,
+    "monte_carlo_runs": 8,
+    "inference": "heuristic-offline",
+    "persist": false,
+    "simulator_version": "0.5.0",
+    "calibration_version": "affinity-prior-map-v2",
+    "owner_id": null
+  },
+  "metrics": {
+    "n_posts": 24,
+    "targets": {
+      "impressions": {
+        "simulator_impact_score": {
+          "spearman": 0.3413,
+          "kendall_tau": 0.2509,
+          "band_hit_rate": 0.4167
+        },
+        "simulator_profile_impact": {
+          "spearman": 0.3413,
+          "kendall_tau": 0.2509,
+          "band_hit_rate": 0.4167
+        },
+        "length": {
+          "spearman": 0.5093,
+          "kendall_tau": 0.3992,
+          "band_hit_rate": 0.5
+        },
+        "keyword_promo": {
+          "spearman": 0.6762,
+          "kendall_tau": 0.5092,
+          "band_hit_rate": 0.5833
+        },
+        "random": {
+          "spearman": 0.0348,
+          "kendall_tau": 0.0217,
+          "band_hit_rate": 0.4583
+        }
+      },
+      "like_rate": {
+        "simulator_impact_score": {
+          "spearman": 0.2432,
+          "kendall_tau": 0.161,
+          "band_hit_rate": 0.2917
+        },
+        "simulator_profile_impact": {
+          "spearman": 0.2432,
+          "kendall_tau": 0.161,
+          "band_hit_rate": 0.2917
+        },
+        "length": {
+          "spearman": 0.3945,
+          "kendall_tau": 0.2548,
+          "band_hit_rate": 0.5417
+        },
+        "keyword_promo": {
+          "spearman": 0.2942,
+          "kendall_tau": 0.1648,
+          "band_hit_rate": 0.5417
+        },
+        "random": {
+          "spearman": 0.1148,
+          "kendall_tau": 0.058,
+          "band_hit_rate": 0.4167
+        }
+      },
+      "engagement_rate": {
+        "simulator_impact_score": {
+          "spearman": 0.2227,
+          "kendall_tau": 0.1536,
+          "band_hit_rate": 0.375
+        },
+        "simulator_profile_impact": {
+          "spearman": 0.2227,
+          "kendall_tau": 0.1536,
+          "band_hit_rate": 0.375
+        },
+        "length": {
+          "spearman": 0.5062,
+          "kendall_tau": 0.3612,
+          "band_hit_rate": 0.5
+        },
+        "keyword_promo": {
+          "spearman": 0.3681,
+          "kendall_tau": 0.2381,
+          "band_hit_rate": 0.4583
+        },
+        "random": {
+          "spearman": 0.1957,
+          "kendall_tau": 0.1449,
+          "band_hit_rate": 0.5417
+        }
+      }
+    },
+    "band_hit_rate": {
+      "impact_tertiles_vs_impression_tertiles": 0.4167,
+      "impact_tertiles_vs_like_rate_tertiles": 0.2917
+    },
+    "simulator_vs_baselines_impressions_spearman": {
+      "simulator": 0.3413,
+      "length": 0.5093,
+      "keyword_promo": 0.6762,
+      "random": 0.0348,
+      "simulator_minus_length": -0.168,
+      "simulator_minus_random": 0.3065
+    },
+    "bland_post_baseline": {
+      "note": "The product bland-post baseline is a constant pack-level score and cannot rank posts. profile_impact is the simulator score relative to that bland baseline.",
+      "tech_pack_bland_score": 37.4
+    },
+    "scorecard_fields_used": [
+      "impact_score",
+      "score_p10",
+      "score_p50",
+      "score_p90",
+      "audience_fit",
+      "niche_index",
+      "profile_impact",
+      "stability",
+      "confidence"
+    ]
+  },
+  "posts": [
+    {
+      "post_id": "syn-tech-01",
+      "niche": "tech",
+      "archetype": "shipping",
+      "published_at": "2026-06-03T14:12:00Z",
+      "observed_at": "2026-06-04T14:12:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Shipped a local eval harness that scores LLM traces in 12ms p95 on a 16GB laptop. Repo + repro script in the thread. No GPU required.",
+      "synthetic_outcomes": {
+        "impressions": 14280.0,
+        "likes": 412.0,
+        "replies": 47.0,
+        "reposts": 88.0,
+        "follows": 29.0,
+        "quotes": 18.0,
+        "shares": 11.0,
+        "like_rate": 0.028852,
+        "engagement_rate": 0.038305
+      },
+      "simulator": {
+        "impact_score": 53.9,
+        "score_p10": 53.5,
+        "score_p50": 54.1,
+        "score_p90": 55.9,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 94.7,
+        "confidence": 0.0,
+        "reach_pct": 45.0,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 83.0,
+        "stop_reason": "ran to cap",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 23.0,
+        "keyword_promo": 10.575,
+        "random": 0.672422,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-02",
+      "niche": "tech",
+      "archetype": "benchmark",
+      "published_at": "2026-06-08T16:40:00Z",
+      "observed_at": "2026-06-09T16:40:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Cut cold-start from 1.8s to 210ms by pre-warming the tokenizer and pinning the vocab mmap. Before/after traces attached. Same model, same prompts.",
+      "synthetic_outcomes": {
+        "impressions": 11840.0,
+        "likes": 356.0,
+        "replies": 39.0,
+        "reposts": 71.0,
+        "follows": 21.0,
+        "quotes": 14.0,
+        "shares": 8.0,
+        "like_rate": 0.030068,
+        "engagement_rate": 0.039358
+      },
+      "simulator": {
+        "impact_score": 54.3,
+        "score_p10": 53.7,
+        "score_p50": 54.6,
+        "score_p90": 56.1,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 94.7,
+        "confidence": 0.0,
+        "reach_pct": 45.0,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 83.8,
+        "stop_reason": "stalled at round 6 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 22.0,
+        "keyword_promo": 2.55,
+        "random": 0.903917,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-03",
+      "niche": "tech",
+      "archetype": "opensource",
+      "published_at": "2026-06-12T13:05:00Z",
+      "observed_at": "2026-06-13T13:05:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Open-sourced the JSONL fixture loader we use for ranking-score diffs. Deterministic seeds, checked-in golden files, MIT. PRs welcome if you add a failing case first.",
+      "synthetic_outcomes": {
+        "impressions": 9640.0,
+        "likes": 287.0,
+        "replies": 33.0,
+        "reposts": 64.0,
+        "follows": 18.0,
+        "quotes": 9.0,
+        "shares": 7.0,
+        "like_rate": 0.029772,
+        "engagement_rate": 0.039834
+      },
+      "simulator": {
+        "impact_score": 52.4,
+        "score_p10": 50.4,
+        "score_p50": 51.6,
+        "score_p90": 52.6,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 95.1,
+        "confidence": 0.0,
+        "reach_pct": 45.0,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 80.0,
+        "stop_reason": "stalled at round 6 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 25.0,
+        "keyword_promo": 4.625,
+        "random": 0.555273,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-04",
+      "niche": "tech",
+      "archetype": "postmortem",
+      "published_at": "2026-06-18T11:22:00Z",
+      "observed_at": "2026-06-19T11:22:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Postmortem: our nightly eval silently dropped 40% of rows because a UTF-8 BOM snuck into one shard. Tests passed. The metric lie lasted 11 days. Checklist we added is in the replies.",
+      "synthetic_outcomes": {
+        "impressions": 8750.0,
+        "likes": 241.0,
+        "replies": 62.0,
+        "reposts": 55.0,
+        "follows": 14.0,
+        "quotes": 21.0,
+        "shares": 6.0,
+        "like_rate": 0.027543,
+        "engagement_rate": 0.040914
+      },
+      "simulator": {
+        "impact_score": 53.3,
+        "score_p10": 51.2,
+        "score_p50": 53.0,
+        "score_p90": 54.1,
+        "audience_fit": 37.1,
+        "niche_index": 36.9,
+        "negative_signal_risk": 0.0,
+        "stability": 93.6,
+        "confidence": 0.0,
+        "reach_pct": 47.5,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 81.8,
+        "stop_reason": "stalled at round 6 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 31.0,
+        "keyword_promo": 4.775,
+        "random": 0.116178,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-05",
+      "niche": "tech",
+      "archetype": "security",
+      "published_at": "2026-06-23T09:18:00Z",
+      "observed_at": "2026-06-24T09:18:00Z",
+      "observation_window_hours": 24.0,
+      "text": "CVE write-up (low): our upload path trusted the client MIME type. Magic-byte check now rejects mismatched PNG/JPEG/MP4. No known exploit in the wild. Patch in v0.4.2.",
+      "synthetic_outcomes": {
+        "impressions": 7320.0,
+        "likes": 198.0,
+        "replies": 28.0,
+        "reposts": 41.0,
+        "follows": 11.0,
+        "quotes": 8.0,
+        "shares": 4.0,
+        "like_rate": 0.027049,
+        "engagement_rate": 0.036475
+      },
+      "simulator": {
+        "impact_score": 54.2,
+        "score_p10": 52.2,
+        "score_p50": 54.4,
+        "score_p90": 55.5,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 92.7,
+        "confidence": 0.0,
+        "reach_pct": 47.5,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 83.6,
+        "stop_reason": "stalled at round 6 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 30.0,
+        "keyword_promo": 2.75,
+        "random": 0.212458,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-06",
+      "niche": "tech",
+      "archetype": "tutorial",
+      "published_at": "2026-06-27T15:50:00Z",
+      "observed_at": "2026-06-28T15:50:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Minimal pytest pattern for a seeded Monte Carlo: freeze numpy Generator(seed), assert p10<=p50<=p90, and compare the visualized run to median exposure—not the first run.",
+      "synthetic_outcomes": {
+        "impressions": 6180.0,
+        "likes": 176.0,
+        "replies": 22.0,
+        "reposts": 31.0,
+        "follows": 9.0,
+        "quotes": 5.0,
+        "shares": 3.0,
+        "like_rate": 0.028479,
+        "engagement_rate": 0.037055
+      },
+      "simulator": {
+        "impact_score": 54.4,
+        "score_p10": 51.5,
+        "score_p50": 54.8,
+        "score_p90": 56.5,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 88.9,
+        "confidence": 0.0,
+        "reach_pct": 50.0,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 84.0,
+        "stop_reason": "ran to cap",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 23.0,
+        "keyword_promo": 2.575,
+        "random": 0.031214,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-07",
+      "niche": "tech",
+      "archetype": "question",
+      "published_at": "2026-07-02T17:05:00Z",
+      "observed_at": "2026-07-03T17:05:00Z",
+      "observation_window_hours": 24.0,
+      "text": "If you ship ranking weights from a public repo, do you pin the commit SHA in the scorecard or only in a comment? Genuinely curious what survives a six-month replay.",
+      "synthetic_outcomes": {
+        "impressions": 5410.0,
+        "likes": 94.0,
+        "replies": 71.0,
+        "reposts": 18.0,
+        "follows": 7.0,
+        "quotes": 12.0,
+        "shares": 2.0,
+        "like_rate": 0.017375,
+        "engagement_rate": 0.033826
+      },
+      "simulator": {
+        "impact_score": 53.9,
+        "score_p10": 52.9,
+        "score_p50": 53.9,
+        "score_p90": 54.8,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 95.8,
+        "confidence": 0.0,
+        "reach_pct": 50.0,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 83.0,
+        "stop_reason": "ran to cap",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 25.0,
+        "keyword_promo": 7.625,
+        "random": 0.171087,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-08",
+      "niche": "tech",
+      "archetype": "comparison",
+      "published_at": "2026-07-07T14:33:00Z",
+      "observed_at": "2026-07-08T14:33:00Z",
+      "observation_window_hours": 24.0,
+      "text": "sqlite WAL vs a tiny Postgres for a single-node sim store: we kept SQLite. Replay hashes and owner isolation were cheaper than a queue. Tradeoff notes in the next post.",
+      "synthetic_outcomes": {
+        "impressions": 4890.0,
+        "likes": 132.0,
+        "replies": 41.0,
+        "reposts": 19.0,
+        "follows": 6.0,
+        "quotes": 11.0,
+        "shares": 3.0,
+        "like_rate": 0.026994,
+        "engagement_rate": 0.039264
+      },
+      "simulator": {
+        "impact_score": 54.3,
+        "score_p10": 52.3,
+        "score_p50": 54.5,
+        "score_p90": 55.2,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 93.6,
+        "confidence": 0.0,
+        "reach_pct": 47.5,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 83.8,
+        "stop_reason": "stalled at round 6 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 28.0,
+        "keyword_promo": 6.7,
+        "random": 0.878451,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-09",
+      "niche": "tech",
+      "archetype": "rust",
+      "published_at": "2026-07-11T19:10:00Z",
+      "observed_at": "2026-07-12T19:10:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Rewrote the trace joiner in Rust. Python stayed in charge of I/O. Throughput 4.6x on a 2.1M-row fixture; peak RSS down 31%. No unsafe. Criterion benches in /benches.",
+      "synthetic_outcomes": {
+        "impressions": 8060.0,
+        "likes": 263.0,
+        "replies": 24.0,
+        "reposts": 47.0,
+        "follows": 16.0,
+        "quotes": 7.0,
+        "shares": 5.0,
+        "like_rate": 0.03263,
+        "engagement_rate": 0.041439
+      },
+      "simulator": {
+        "impact_score": 53.6,
+        "score_p10": 52.6,
+        "score_p50": 53.5,
+        "score_p90": 54.7,
+        "audience_fit": 37.1,
+        "niche_index": 36.9,
+        "negative_signal_risk": 0.0,
+        "stability": 95.3,
+        "confidence": 0.0,
+        "reach_pct": 40.0,
+        "distribution_potential": 90.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 82.4,
+        "stop_reason": "stalled at round 5 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 31.0,
+        "keyword_promo": 6.775,
+        "random": 0.104609,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-10",
+      "niche": "tech",
+      "archetype": "unpopular-opinion",
+      "published_at": "2026-07-15T12:44:00Z",
+      "observed_at": "2026-07-16T12:44:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Unpopular: leaderboards without a frozen prompt set and a disclosed seed are just vibes. If I cannot replay your eval, I do not care about your 2-point gain.",
+      "synthetic_outcomes": {
+        "impressions": 16320.0,
+        "likes": 501.0,
+        "replies": 186.0,
+        "reposts": 94.0,
+        "follows": 22.0,
+        "quotes": 67.0,
+        "shares": 19.0,
+        "like_rate": 0.030699,
+        "engagement_rate": 0.047855
+      },
+      "simulator": {
+        "impact_score": 54.0,
+        "score_p10": 53.1,
+        "score_p50": 54.1,
+        "score_p90": 54.7,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 96.4,
+        "confidence": 0.0,
+        "reach_pct": 50.0,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 83.2,
+        "stop_reason": "ran to cap",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 24.0,
+        "keyword_promo": 4.6,
+        "random": 0.798301,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-11",
+      "niche": "tech",
+      "archetype": "architecture",
+      "published_at": "2026-07-20T13:28:00Z",
+      "observed_at": "2026-07-21T13:28:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Audience sim loop: extract features → persona affinities → map onto impression priors → RankingScorer weights → candidate-slate competition → cascade. Groq never emits the headline score.",
+      "synthetic_outcomes": {
+        "impressions": 3920.0,
+        "likes": 121.0,
+        "replies": 17.0,
+        "reposts": 22.0,
+        "follows": 8.0,
+        "quotes": 4.0,
+        "shares": 2.0,
+        "like_rate": 0.030867,
+        "engagement_rate": 0.040816
+      },
+      "simulator": {
+        "impact_score": 53.9,
+        "score_p10": 53.4,
+        "score_p50": 53.8,
+        "score_p90": 55.8,
+        "audience_fit": 38.3,
+        "niche_index": 38.2,
+        "negative_signal_risk": 0.0,
+        "stability": 94.7,
+        "confidence": 0.0,
+        "reach_pct": 47.5,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 83.0,
+        "stop_reason": "ran to cap",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 22.0,
+        "keyword_promo": 0.55,
+        "random": 0.482608,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-12",
+      "niche": "tech",
+      "archetype": "weekend-project",
+      "published_at": "2026-07-26T18:02:00Z",
+      "observed_at": "2026-07-27T18:02:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Weekend project: a 120-line watcher that fails CI if any committed scorecard still says empirically calibrated. Ugly. Effective. gist in replies.",
+      "synthetic_outcomes": {
+        "impressions": 2740.0,
+        "likes": 88.0,
+        "replies": 14.0,
+        "reposts": 11.0,
+        "follows": 4.0,
+        "quotes": 3.0,
+        "shares": 1.0,
+        "like_rate": 0.032117,
+        "engagement_rate": 0.041241
+      },
+      "simulator": {
+        "impact_score": 54.1,
+        "score_p10": 53.2,
+        "score_p50": 54.3,
+        "score_p90": 55.1,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 95.8,
+        "confidence": 0.0,
+        "reach_pct": 47.5,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 83.4,
+        "stop_reason": "ran to cap",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 21.0,
+        "keyword_promo": 0.525,
+        "random": 0.776303,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-13",
+      "niche": "tech",
+      "archetype": "hiring",
+      "published_at": "2026-07-30T15:16:00Z",
+      "observed_at": "2026-07-31T15:16:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Looking for one contractor to review our replay hashes and SQLite snapshot contract. Paid, small, public write-up at the end. DM a failing test, not a resume.",
+      "synthetic_outcomes": {
+        "impressions": 2210.0,
+        "likes": 41.0,
+        "replies": 19.0,
+        "reposts": 6.0,
+        "follows": 3.0,
+        "quotes": 2.0,
+        "shares": 1.0,
+        "like_rate": 0.018552,
+        "engagement_rate": 0.029864
+      },
+      "simulator": {
+        "impact_score": 53.6,
+        "score_p10": 52.3,
+        "score_p50": 53.5,
+        "score_p90": 54.4,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 95.3,
+        "confidence": 0.0,
+        "reach_pct": 50.0,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 82.4,
+        "stop_reason": "ran to cap",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 24.0,
+        "keyword_promo": 4.6,
+        "random": 0.185354,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-14",
+      "niche": "tech",
+      "archetype": "changelog",
+      "published_at": "2026-08-04T10:07:00Z",
+      "observed_at": "2026-08-05T10:07:00Z",
+      "observation_window_hours": 24.0,
+      "text": "v0.5.0: independent action marginals, stored-probability replay, confidence stays 0.0 until a real holdout exists. Full notes in CHANGELOG. No new niches.",
+      "synthetic_outcomes": {
+        "impressions": 1980.0,
+        "likes": 67.0,
+        "replies": 8.0,
+        "reposts": 9.0,
+        "follows": 5.0,
+        "quotes": 1.0,
+        "shares": 1.0,
+        "like_rate": 0.033838,
+        "engagement_rate": 0.042424
+      },
+      "simulator": {
+        "impact_score": 53.3,
+        "score_p10": 51.1,
+        "score_p50": 53.1,
+        "score_p90": 55.2,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 90.9,
+        "confidence": 0.0,
+        "reach_pct": 47.5,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 81.8,
+        "stop_reason": "stalled at round 6 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 25.0,
+        "keyword_promo": 2.625,
+        "random": 0.493424,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-15",
+      "niche": "tech",
+      "archetype": "tool-reco",
+      "published_at": "2026-08-09T16:21:00Z",
+      "observed_at": "2026-08-10T16:21:00Z",
+      "observation_window_hours": 24.0,
+      "text": "If you only adopt one eval habit this month: dump the exact command line, seed, and SHA of the fixture into the report JSON. Future you will not remember the flags.",
+      "synthetic_outcomes": {
+        "impressions": 4560.0,
+        "likes": 154.0,
+        "replies": 16.0,
+        "reposts": 27.0,
+        "follows": 8.0,
+        "quotes": 6.0,
+        "shares": 3.0,
+        "like_rate": 0.033772,
+        "engagement_rate": 0.043202
+      },
+      "simulator": {
+        "impact_score": 54.7,
+        "score_p10": 53.8,
+        "score_p50": 55.2,
+        "score_p90": 56.3,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 94.4,
+        "confidence": 0.0,
+        "reach_pct": 52.5,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 84.6,
+        "stop_reason": "ran to cap",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 22.0,
+        "keyword_promo": 6.55,
+        "random": 0.732322,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-16",
+      "niche": "tech",
+      "archetype": "vague",
+      "published_at": "2026-08-13T20:45:00Z",
+      "observed_at": "2026-08-14T20:45:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Been thinking a lot about AI tooling lately. The space is moving so fast. More thoughts soon.",
+      "synthetic_outcomes": {
+        "impressions": 860.0,
+        "likes": 11.0,
+        "replies": 2.0,
+        "reposts": 0.0,
+        "follows": 0.0,
+        "quotes": 0.0,
+        "shares": 0.0,
+        "like_rate": 0.012791,
+        "engagement_rate": 0.015116
+      },
+      "simulator": {
+        "impact_score": 54.0,
+        "score_p10": 52.3,
+        "score_p50": 54.3,
+        "score_p90": 55.3,
+        "audience_fit": 36.9,
+        "niche_index": 36.7,
+        "negative_signal_risk": 0.0,
+        "stability": 93.3,
+        "confidence": 0.0,
+        "reach_pct": 47.5,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 83.2,
+        "stop_reason": "stalled at round 6 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 16.0,
+        "keyword_promo": 0.4,
+        "random": 0.245807,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-17",
+      "niche": "tech",
+      "archetype": "low-info",
+      "published_at": "2026-08-14T07:03:00Z",
+      "observed_at": "2026-08-15T07:03:00Z",
+      "observation_window_hours": 24.0,
+      "text": "gm builders",
+      "synthetic_outcomes": {
+        "impressions": 240.0,
+        "likes": 6.0,
+        "replies": 1.0,
+        "reposts": 0.0,
+        "follows": 0.0,
+        "quotes": 0.0,
+        "shares": 0.0,
+        "like_rate": 0.025,
+        "engagement_rate": 0.029167
+      },
+      "simulator": {
+        "impact_score": 38.2,
+        "score_p10": 37.7,
+        "score_p50": 38.2,
+        "score_p90": 38.6,
+        "audience_fit": 36.7,
+        "niche_index": 36.5,
+        "negative_signal_risk": 0.0,
+        "stability": 98.0,
+        "confidence": 0.0,
+        "reach_pct": 35.0,
+        "distribution_potential": 80.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 51.6,
+        "stop_reason": "stalled at round 5 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 2.0,
+        "keyword_promo": 0.05,
+        "random": 0.967604,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-18",
+      "niche": "tech",
+      "archetype": "promo-hard",
+      "published_at": "2026-08-18T13:55:00Z",
+      "observed_at": "2026-08-19T13:55:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Buy now! Limited discount on our Pro waitlist. Subscribe and follow for the promo link. Sale ends tonight!!!",
+      "synthetic_outcomes": {
+        "impressions": 410.0,
+        "likes": 4.0,
+        "replies": 3.0,
+        "reposts": 0.0,
+        "follows": 1.0,
+        "quotes": 0.0,
+        "shares": 0.0,
+        "like_rate": 0.009756,
+        "engagement_rate": 0.017073
+      },
+      "simulator": {
+        "impact_score": 49.8,
+        "score_p10": 47.7,
+        "score_p50": 50.0,
+        "score_p90": 51.5,
+        "audience_fit": 36.9,
+        "niche_index": 23.8,
+        "negative_signal_risk": 0.1,
+        "stability": 91.6,
+        "confidence": 0.0,
+        "reach_pct": 42.5,
+        "distribution_potential": 90.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 74.8,
+        "stop_reason": "stalled at round 6 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 15.0,
+        "keyword_promo": -29.625,
+        "random": 0.836719,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-19",
+      "niche": "tech",
+      "archetype": "promo-soft",
+      "published_at": "2026-08-21T15:30:00Z",
+      "observed_at": "2026-08-22T15:30:00Z",
+      "observation_window_hours": 24.0,
+      "text": "We just opened the waitlist for hosted evals. Sign up, subscribe for launch codes, and follow for discount drops. Link in bio.",
+      "synthetic_outcomes": {
+        "impressions": 1280.0,
+        "likes": 19.0,
+        "replies": 7.0,
+        "reposts": 2.0,
+        "follows": 2.0,
+        "quotes": 1.0,
+        "shares": 1.0,
+        "like_rate": 0.014844,
+        "engagement_rate": 0.021875
+      },
+      "simulator": {
+        "impact_score": 51.2,
+        "score_p10": 50.4,
+        "score_p50": 51.1,
+        "score_p90": 51.9,
+        "audience_fit": 39.6,
+        "niche_index": 31.3,
+        "negative_signal_risk": 0.0,
+        "stability": 96.7,
+        "confidence": 0.0,
+        "reach_pct": 50.0,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 77.6,
+        "stop_reason": "ran to cap",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 17.0,
+        "keyword_promo": -23.575,
+        "random": 0.16817,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-20",
+      "niche": "tech",
+      "archetype": "thread-educational",
+      "published_at": "2026-08-25T14:08:00Z",
+      "observed_at": "2026-08-26T14:08:00Z",
+      "observation_window_hours": 24.0,
+      "text": "A ranking score is not a forecast. Public default weights scale predicted action probabilities, then apply an offset and an out-of-network factor. They do not know your followers, your history, or tonight's experiments. Treat the number as a comparative scenario.",
+      "synthetic_outcomes": {
+        "impressions": 3370.0,
+        "likes": 109.0,
+        "replies": 21.0,
+        "reposts": 16.0,
+        "follows": 7.0,
+        "quotes": 5.0,
+        "shares": 2.0,
+        "like_rate": 0.032344,
+        "engagement_rate": 0.043323
+      },
+      "simulator": {
+        "impact_score": 53.5,
+        "score_p10": 52.3,
+        "score_p50": 53.5,
+        "score_p90": 54.6,
+        "audience_fit": 37.1,
+        "niche_index": 36.9,
+        "negative_signal_risk": 0.0,
+        "stability": 94.9,
+        "confidence": 0.0,
+        "reach_pct": 47.5,
+        "distribution_potential": 100.0,
+        "engagement_quality": 5.3,
+        "profile_impact": 82.2,
+        "stop_reason": "stalled at round 6 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 37.0,
+        "keyword_promo": -0.075,
+        "random": 0.460248,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-21",
+      "niche": "tech",
+      "archetype": "hot-take",
+      "published_at": "2026-08-29T21:17:00Z",
+      "observed_at": "2026-08-30T21:17:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Hot take: if your product needs a 70B judge to tell two hooks apart, you do not have an eval. You have a mood ring with extra latency.",
+      "synthetic_outcomes": {
+        "impressions": 12110.0,
+        "likes": 388.0,
+        "replies": 142.0,
+        "reposts": 76.0,
+        "follows": 15.0,
+        "quotes": 44.0,
+        "shares": 13.0,
+        "like_rate": 0.03204,
+        "engagement_rate": 0.050041
+      },
+      "simulator": {
+        "impact_score": 53.4,
+        "score_p10": 52.2,
+        "score_p50": 53.3,
+        "score_p90": 54.2,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 95.6,
+        "confidence": 0.0,
+        "reach_pct": 42.5,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 82.0,
+        "stop_reason": "stalled at round 6 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 23.0,
+        "keyword_promo": 4.575,
+        "random": 0.902287,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-22",
+      "niche": "tech",
+      "archetype": "repro-failure",
+      "published_at": "2026-09-03T12:26:00Z",
+      "observed_at": "2026-09-04T12:26:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Tried to reproduce a viral '12x faster RAG' gist. Their benchmark used cached embeddings and counted the cache as inference. Uncached it was 0.9x. Always print cache hit rate.",
+      "synthetic_outcomes": {
+        "impressions": 10140.0,
+        "likes": 319.0,
+        "replies": 54.0,
+        "reposts": 61.0,
+        "follows": 13.0,
+        "quotes": 22.0,
+        "shares": 7.0,
+        "like_rate": 0.03146,
+        "engagement_rate": 0.042801
+      },
+      "simulator": {
+        "impact_score": 53.2,
+        "score_p10": 51.9,
+        "score_p50": 52.9,
+        "score_p90": 55.4,
+        "audience_fit": 37.1,
+        "niche_index": 36.9,
+        "negative_signal_risk": 0.0,
+        "stability": 92.2,
+        "confidence": 0.0,
+        "reach_pct": 50.0,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 81.6,
+        "stop_reason": "ran to cap",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 27.0,
+        "keyword_promo": 8.675,
+        "random": 0.7332,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-23",
+      "niche": "tech",
+      "archetype": "off-hours-bland",
+      "published_at": "2026-09-07T03:41:00Z",
+      "observed_at": "2026-09-08T03:41:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Update: still iterating on the dashboard. Small fixes this week.",
+      "synthetic_outcomes": {
+        "impressions": 520.0,
+        "likes": 8.0,
+        "replies": 0.0,
+        "reposts": 0.0,
+        "follows": 0.0,
+        "quotes": 0.0,
+        "shares": 0.0,
+        "like_rate": 0.015385,
+        "engagement_rate": 0.015385
+      },
+      "simulator": {
+        "impact_score": 48.1,
+        "score_p10": 47.2,
+        "score_p50": 48.0,
+        "score_p90": 49.0,
+        "audience_fit": 36.8,
+        "niche_index": 36.6,
+        "negative_signal_risk": 0.0,
+        "stability": 96.0,
+        "confidence": 0.0,
+        "reach_pct": 40.0,
+        "distribution_potential": 90.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 71.4,
+        "stop_reason": "stalled at round 5 — velocity < 10%.",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 8.0,
+        "keyword_promo": 0.2,
+        "random": 0.70594,
+        "bland_pack_score": 37.4
+      }
+    },
+    {
+      "post_id": "syn-tech-24",
+      "niche": "tech",
+      "archetype": "concrete-tip",
+      "published_at": "2026-09-11T14:59:00Z",
+      "observed_at": "2026-09-12T14:59:00Z",
+      "observation_window_hours": 24.0,
+      "text": "Pin your x-algorithm weights to a 40-char SHA, not `main`. We froze d0cef2f943084ee0d4310378031c9c2c37d67f12 because later public main diverged. Replay broke the day we didn't.",
+      "synthetic_outcomes": {
+        "impressions": 5680.0,
+        "likes": 172.0,
+        "replies": 19.0,
+        "reposts": 29.0,
+        "follows": 10.0,
+        "quotes": 6.0,
+        "shares": 4.0,
+        "like_rate": 0.030282,
+        "engagement_rate": 0.038732
+      },
+      "simulator": {
+        "impact_score": 53.3,
+        "score_p10": 52.3,
+        "score_p50": 53.0,
+        "score_p90": 55.1,
+        "audience_fit": 37.0,
+        "niche_index": 36.8,
+        "negative_signal_risk": 0.0,
+        "stability": 93.8,
+        "confidence": 0.0,
+        "reach_pct": 47.5,
+        "distribution_potential": 100.0,
+        "engagement_quality": 0.0,
+        "profile_impact": 81.8,
+        "stop_reason": "ran to cap",
+        "inference_path": "heuristic+prior-map",
+        "calibration_status": "prior-mapped-not-empirically-calibrated",
+        "data_coverage_status": "synthetic-personas; no observed X outcome calibration",
+        "run_id": null
+      },
+      "baselines": {
+        "length": 24.0,
+        "keyword_promo": 4.6,
+        "random": 0.461031,
+        "bland_pack_score": 37.4
+      }
+    }
+  ]
+}
