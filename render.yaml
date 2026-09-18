@@ -1,22 +1,18 @@
-# Durable single-node pilot: paid plan + persistent disk.
-# Free Render + SQLITE_PATH=/tmp/runs.sqlite is ephemeral demo only (lost on
-# restart/spin-down) and is not this blueprint. Owner upgrade steps:
-# research/RENDER_OWNER_RUNBOOK.md
+# Current accepted live setup: free Render + ephemeral SQLite.
+# SQLITE_PATH=/tmp/runs.sqlite is wiped on restart, redeploy, and free-instance
+# spin-down. Paid plan + persistent disk is optional later (see
+# research/RENDER_OWNER_RUNBOOK.md). Do not check in Starter/disk while the
+# owner stays on free — Blueprint sync would push paid resources.
 services:
   - type: web
     name: x-impact-simulator-api
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
-    # Disks are single-instance only and disable zero-downtime deploys.
-    disk:
-      name: x-impact-sqlite
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: APP_ENV
         value: production
@@ -35,7 +31,7 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: SQLITE_PATH
-        value: /var/data/runs.sqlite
+        value: /tmp/runs.sqlite
       - key: ALLOW_SQLITE_IN_PRODUCTION
         value: "true"
       - key: RUN_RETENTION_DAYS

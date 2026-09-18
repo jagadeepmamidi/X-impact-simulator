@@ -1,19 +1,21 @@
-# SOP pilot addendum (locked 2026-09-18)
+# SOP pilot addendum (locked 2026-09-18; storage decision updated 2026-09-18)
 
-Short record of **accepted permanent deltas** versus `X_Impact_Simulator_Full_SOP.docx` (v1.0, 2 Sep 2026) and the **B → C** path. This does not reopen those decisions.
+Short record of **accepted permanent deltas** versus `X_Impact_Simulator_Full_SOP.docx` (v1.0, 2 Sep 2026) and the **B → C** path. This does not reopen those decisions except the storage hosting choice below.
 
 ## Path
 
-Durable **Gate B** pilot, then **Gate C evidence**. **Not** public beta (Gate D) yet.
+**Current accepted setup:** free Render + ephemeral `/tmp` SQLite. Durable **Gate B** storage (paid plan + persistent disk) is **deferred**. Then **Gate C evidence**. **Not** public beta (Gate D) yet.
 
-This addendum’s companion PR covers only:
+This addendum’s original companion PR covered:
 
-- Render paid plan + persistent disk config/docs for SQLite (`render.yaml`, `research/RENDER_OWNER_RUNBOOK.md`, README)
+- Render config/docs for SQLite (`render.yaml`, `research/RENDER_OWNER_RUNBOOK.md`, README)
 - Public-demo **loss banner** (and Save/History note) while storage is ephemeral
 - Immutable **x-algorithm SHA pin** matching current in-repo weights
 - This addendum
 
-**After this PR (owner follow-up, not in this sprint):** Gate C backtests using the owner’s ≥20 historical posts. No claim that Gate C or D is complete.
+**Decision change:** the owner stays on **free Render only**. The checked-in blueprint is `plan: free` + `SQLITE_PATH=/tmp/runs.sqlite` (no `disk:` block). The loss banner stays until durable storage exists. The paid+disk checklist remains in the owner runbook as **optional later**. Durable Gate B is not claimed complete.
+
+**After this (owner follow-up, not in this sprint):** Gate C backtests using the owner’s ≥20 historical posts. No claim that Gate C or D is complete.
 
 ## Accepted permanent deltas vs original SOP
 
@@ -37,7 +39,8 @@ Anonymous demo sessions consume the server Groq quota within `SIM_PUBLIC_RUNS_PE
 - **Not X production.** RankingScorer public defaults only — not Phoenix, Thunder, SimClusters retrieval, VMRanker, visibility filters, author diversity, or runtime experiments.
 - **Not a virality guarantee** and not a live X feed.
 - **Not Gate C complete** until the owner backtest exists. **Not Gate D.**
+- **Not durable Gate B.** Live SQLite is free `/tmp` until an optional paid disk is attached.
 
-## Durable storage pointer
+## Storage pointer
 
-Owner upgrade, disk mount, `SQLITE_PATH=/var/data/runs.sqlite`, health checks (`storage.production_ready` / `storage.path`), and SQLite backup notes: **`research/RENDER_OWNER_RUNBOOK.md`**.
+Current live path: free + `/tmp/runs.sqlite` (ephemeral; banner stays). Optional later paid disk, health checks (`storage.production_ready` / `storage.path`), and SQLite backup notes: **`research/RENDER_OWNER_RUNBOOK.md`**.
