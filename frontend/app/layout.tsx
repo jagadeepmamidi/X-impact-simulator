@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { siteUrl } from "@/lib/site";
+import { EphemeralStorageBanner } from "./banner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -36,7 +37,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-[var(--bg)] text-[var(--fg)] [font-feature-settings:'ss01']">{children}</body>
+      <body className="flex min-h-full flex-col bg-[var(--bg)] text-[var(--fg)] [font-feature-settings:'ss01']">
+        <EphemeralStorageBanner />
+        {children}
+      </body>
     </html>
   );
 }
